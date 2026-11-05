@@ -102,3 +102,53 @@ QLabel#props_error {
     color: #FF8A8A;
     padding: 8px 16px;
 }
+
+/* folder tabs in dialogs: the selected tab continues into its page
+ * (selectors carry :top like QDarkStyle's, so these rules win) */
+QDialog QTabWidget::pane {
+    background-color: #19232D;
+    border: 1px solid #455364;
+    border-radius: 0;
+    top: -1px;
+}
+QTabWidget#props_tabs::pane {
+    border: 0;
+    border-top: 1px solid #455364;
+}
+QTabWidget#props_tabs::tab-bar {
+    left: 12px;
+}
+QDialog QTabBar::tab:top {
+    background-color: #26313C;
+    color: #9DA9B5;
+    border: 1px solid #455364;
+    border-bottom: 1px solid #455364;
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+    padding: 5px 14px;
+    margin-top: 3px;
+    margin-left: 0;
+    margin-right: 2px;
+}
+QDialog QTabBar::tab:top:!selected:hover {
+    background-color: #2F3B48;
+    color: #E0E1E3;
+    border: 1px solid #455364;
+    border-bottom: 1px solid #455364;
+    padding: 5px 14px;
+}
+QDialog QTabBar::tab:top:selected {
+    background-color: #19232D;
+    color: #E0E1E3;
+    border: 1px solid #455364;
+    border-top: 2px solid #5AA2FF;
+    border-bottom: 1px solid #19232D;
+    margin-top: 0;
+    margin-bottom: -1px;
+    padding-top: 7px;
+    font-weight: 600;
+}
+QDialog QTabWidget QScrollArea {
+    border: 0;
+    border-radius: 0;
+}

@@ -106,7 +106,6 @@ class PropsDialog(QDialog):
 
         self.tabs = QTabWidget()
         self.tabs.setObjectName("props_tabs")
-        self.tabs.setDocumentMode(True)
         self.ignore_dtype_labels = ["_multiline", "_multiline_python_external", "file_open", "file_save"]
 
         for cat in unique_categories():

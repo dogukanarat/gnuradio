@@ -497,6 +497,10 @@ QTabWidget#props_tabs::pane {
     border: 0;
     border-top: 1px solid #D3D9E1;
     background: #FFFFFF;
+    top: -1px;
+}
+QTabWidget#props_tabs::tab-bar {
+    left: 12px;
 }
 QScrollArea#props_scroll, QWidget#props_page {
     background: #FFFFFF;
@@ -533,4 +537,45 @@ QLabel#props_error {
     color: #A12020;
     background: #FFF5F5;
     padding: 8px 16px;
+}
+
+/* ------------------------------------------- folder tabs in dialogs
+ * The selected tab has the colour of its page and no bottom border; it
+ * overlaps the page's top border by one pixel, so tab and page read as
+ * one sheet. The other tabs sit slightly lower, behind the page.
+ */
+QDialog QTabWidget::pane {
+    background: #FFFFFF;
+    border: 1px solid #D3D9E1;
+    top: -1px;
+}
+QDialog QTabBar {
+    background: transparent;
+}
+QDialog QTabBar::tab {
+    background: #EDF0F4;
+    color: #5B6676;
+    border: 1px solid #D3D9E1;
+    border-bottom: 1px solid #D3D9E1;
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+    padding: 5px 14px;
+    margin-top: 3px;
+    margin-right: 2px;
+    font-weight: 400;
+}
+QDialog QTabBar::tab:!selected:hover {
+    background: #F7F9FB;
+    color: #1D2733;
+}
+QDialog QTabBar::tab:selected {
+    background: #FFFFFF;
+    color: #1D2733;
+    border: 1px solid #D3D9E1;
+    border-top: 2px solid #1660C9;
+    border-bottom: 1px solid #FFFFFF;
+    margin-top: 0;
+    margin-bottom: -1px;
+    padding-top: 7px;
+    font-weight: 600;
 }

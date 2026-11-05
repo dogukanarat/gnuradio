@@ -8,7 +8,7 @@ from PyQt6.QtCore import Qt, QSettings
 from PyQt6.QtWidgets import (QLineEdit, QTabWidget, QDialog,
                              QScrollArea, QVBoxLayout, QCheckBox,
                              QComboBox, QHBoxLayout, QDialogButtonBox,
-                             QLabel, QWidget, QFormLayout)
+                             QLabel, QWidget, QFormLayout, QFrame)
 
 from ..properties import Paths
 from gnuradio import gr
@@ -50,10 +50,15 @@ class PreferencesDialog(QDialog):
     def new_tab_widget(self) -> QWidget:
         widget = QWidget()
         vbox = QVBoxLayout()
+        # no inner frame or margin: the page continues the selected tab
+        vbox.setContentsMargins(0, 0, 0, 0)
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
         content = QWidget()
         widget.form = QFormLayout(content)
+        widget.form.setContentsMargins(16, 14, 16, 14)
+        widget.form.setVerticalSpacing(8)
 
         widget.setLayout(vbox)
         vbox.addWidget(scroll)
