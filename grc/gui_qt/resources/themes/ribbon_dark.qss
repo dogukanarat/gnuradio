@@ -10,7 +10,6 @@ QToolBar#_RibbonTb {
 QTabWidget#ribbon::pane {
     background: #1B1F26;
     border: 0;
-    border-bottom: 1px solid #2B313B;
     top: 0;
 }
 QTabBar#ribbon_tabs {
@@ -39,6 +38,7 @@ QTabBar#ribbon_tabs::tab:selected {
 }
 QWidget#ribbon_page {
     background: #1B1F26;
+    border-bottom: 1px solid #2B313B;   /* hairline (a pane border leaves a gap) */
 }
 QFrame#ribbon_group {
     background: transparent;

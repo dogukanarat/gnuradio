@@ -86,7 +86,6 @@ QTabWidget#ribbon {
 QTabWidget#ribbon::pane {
     background: #F9FAFB;
     border: 0;
-    border-bottom: 1px solid #D3D9E1;
     top: 0;
 }
 QTabBar#ribbon_tabs {
@@ -116,6 +115,9 @@ QTabBar#ribbon_tabs::tab:selected {
 
 QWidget#ribbon_page {
     background: #F9FAFB;
+    /* hairline under the ribbon (a border on the tab pane left a 1px gap
+       through which the dark tab row showed) */
+    border-bottom: 1px solid #DDE2E9;
 }
 QFrame#ribbon_group {
     background: transparent;
@@ -208,6 +210,10 @@ QTabWidget::pane {
 }
 QTabBar {
     background: #EEF1F5;
+    qproperty-drawBase: 0;     /* no extra grey line above the document tabs */
+}
+QGraphicsView {
+    border: 0;                 /* the canvas: no sunken frame inside the tab */
 }
 /* No text color here: unsaved flowgraphs color their tab title from code */
 QTabBar::tab {
@@ -250,23 +256,39 @@ QDockWidget {
     titlebar-close-icon: none;
 }
 QDockWidget::title {
-    background: #FFFFFF;
+    background: #F4F6F9;
     color: #3C4757;
     padding: 6px 10px;
-    border-bottom: 1px solid #E1E5EB;
+    border: 0;
     text-align: left;
     font-weight: 600;
 }
+/* dock panels are light grey; trees, tables, lists and the console sit on
+   them as white cards with a thin border */
 QDockWidget > QWidget {
+    background: #F4F6F9;
+}
+QDockWidget > QTreeView, QDockWidget > QTreeWidget, QDockWidget > QListView,
+QDockWidget > QTableView, QDockWidget > QTableWidget {
+    margin: 0 6px 6px 6px;
+}
+QDockWidget QTextEdit, QDockWidget QPlainTextEdit, QDockWidget QTextBrowser {
     background: #FFFFFF;
+    border: 1px solid #DDE2E9;
+    border-radius: 4px;
 }
 
 /* ----------------------------------------------------------------- views */
 QTreeView, QTreeWidget, QListView, QTableView, QTableWidget {
     background: #FFFFFF;
     alternate-background-color: #F8FAFC;
-    border: 0;
+    border: 1px solid #DDE2E9;
+    border-radius: 4px;
     outline: 0;
+}
+QHeaderView {
+    background: transparent;
+    border: 0;
 }
 QTreeView::item, QTreeWidget::item {
     padding: 2px 0;
@@ -280,11 +302,11 @@ QTableView::item:selected {
     color: #1D2733;
 }
 QHeaderView::section {
-    background: #F4F6F9;
+    background: #F8FAFC;
     color: #6B7686;
     border: 0;
-    border-bottom: 1px solid #D3D9E1;
-    border-right: 1px solid #E1E5EB;
+    border-bottom: 1px solid #DDE2E9;
+    border-right: 1px solid #E8ECF1;
     padding: 4px 8px;
     font-weight: 600;
 }
@@ -327,6 +349,8 @@ QComboBox::down-arrow:disabled {
 QComboBox QAbstractItemView {
     background: #FFFFFF;
     border: 1px solid #D3D9E1;
+    border-radius: 0;
+    margin: 0;
     selection-background-color: #E3EDFB;
 }
 
