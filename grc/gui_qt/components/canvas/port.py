@@ -96,8 +96,12 @@ class GUIPort(QGraphicsItem):
             return False
 
     def _draws_body(self):
-        """Unlabelled sink arrows disappear once a connection's arrow head takes their place."""
-        if self.show_name or self.core._dir != "sink":
+        """
+        As in Simulink, an unlabelled port symbol disappears once it is
+        connected: the line starts at the block border and its arrow head
+        ends on the block border.
+        """
+        if self.show_name:
             return True
         return not self._is_connected()
 
@@ -105,11 +109,13 @@ class GUIPort(QGraphicsItem):
     def connection_point(self):
         """Scene position where a connection line attaches to this port."""
         if self.core._dir == "sink":
-            # The connection arrow head ends on the block border for connected
-            # arrow ports, otherwise on the outer edge of the port.
+            # The arrow head (drawn after this point) ends on the block border
+            # for connected arrow ports, otherwise on the outer edge of the port.
             x = 0.0 if self._draws_body() else self.width
             return self.mapToScene(QPointF(x - Constants.CONNECTOR_ARROW_HEIGHT, self.height / 2.0))
-        return self.mapToScene(QPointF(self.width, self.height / 2.0))
+        # Sources: tip of the label tag, or the block border for arrow ports
+        x = self.width if self._draws_body() else 0.0
+        return self.mapToScene(QPointF(x, self.height / 2.0))
 
     @property
     def ctrl_point(self):
@@ -220,8 +226,9 @@ class GUIPort(QGraphicsItem):
     def _outline(self):
         w, h = self.width, self.height
         if not self.show_name:
-            # A plain arrow head pointing along the data flow
-            return QPolygonF([QPointF(1.0, 2.0), QPointF(w, h / 2.0), QPointF(1.0, h - 2.0)])
+            # An open chevron ">" pointing along the data flow (Simulink's
+            # symbol for an unconnected port)
+            return QPolygonF([QPointF(2.0, 3.0), QPointF(w - 1.0, h / 2.0), QPointF(2.0, h - 3.0)])
         # A tag: flat back, pointed front
         tip = min(5.0, w / 3.0)
         return QPolygonF([
@@ -235,6 +242,17 @@ class GUIPort(QGraphicsItem):
         if not self._draws_body():
             return
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+
+        if not self.show_name:
+            # Open chevron in the port's type color
+            pen = QPen(self._border_color if self._hovering else self._bg_color.darker(115))
+            pen.setWidthF(1.8)
+            pen.setJoinStyle(Qt.PenJoinStyle.MiterJoin)
+            pen.setCapStyle(Qt.PenCapStyle.FlatCap)
+            painter.setPen(pen)
+            painter.setBrush(Qt.BrushStyle.NoBrush)
+            painter.drawPolyline(self._outline())
+            return
 
         pen = QPen(self._border_color)
         pen.setWidthF(1.0)

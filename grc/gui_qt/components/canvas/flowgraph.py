@@ -105,8 +105,17 @@ class FlowgraphScene(QGraphicsScene, base.Component):
         self.core.validate()
         for block in self.core.blocks:
             block.gui.create_shapes_and_labels()
+        # route lines once every block has its final size
+        self.refresh_connections()
         self.update_elements_to_draw()
         self.app.VariableEditor.update_gui(self.core.blocks)
+
+    def refresh_connections(self):
+        """Recompute the path of every connection (e.g. after blocks moved)."""
+        for connection in self.core.connections:
+            gui = getattr(connection, "gui", None)
+            if gui is not None:
+                gui.update()
 
     def update_elements_to_draw(self):
         # hide_disabled_blocks = Actions.TOGGLE_HIDE_DISABLED_BLOCKS.get_active()
@@ -358,6 +367,8 @@ class FlowgraphScene(QGraphicsScene, base.Component):
         else:
             if self.clickPos != event.scenePos() and self.moving_blocks:
                 self.itemMoved.emit(event.scenePos() - self.clickPos)
+                # Lines route around blocks, so any line may need a new path
+                self.refresh_connections()
             elif (self.start_port != None) and (self.end_port != None):
                 log.debug("Created connection (click)")
                 new_con = self.core.connect(self.start_port.core, self.end_port.core)

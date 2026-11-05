@@ -1098,6 +1098,7 @@ class MainWindow(QMainWindow, base.Component):
                 self.currentFlowgraphScene.core.validate()
                 for block in self.currentFlowgraphScene.core.blocks:
                     block.gui.create_shapes_and_labels()
+                self.currentFlowgraphScene.refresh_connections()
                 self.currentFlowgraphScene.update_elements_to_draw()
                 if hasattr(self.app, 'VariableEditor'):
                     self.app.VariableEditor.set_scene(self.currentFlowgraphScene)
