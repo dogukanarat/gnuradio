@@ -23,7 +23,7 @@ import textwrap
 import os
 
 from PyQt6.QtCore import QSettings, Qt, QT_VERSION_STR, PYQT_VERSION_STR
-from PyQt6.QtGui import QIcon
+from PyQt6.QtGui import QColor, QIcon, QPalette
 from PyQt6.QtWidgets import QApplication
 
 # Custom modules
@@ -69,6 +69,7 @@ class Application(QApplication):
                 log.warning("Did not find QDarkstyle. Dark mode disabled")
         elif self.requested_theme == "modern":
             self.setStyle("Fusion")
+            self.setPalette(self._modern_palette())
             self.setStyleSheet(self._read_stylesheet("modern.qss"))
             self.theme = "modern"
         canvas_colors.set_theme(self.theme)
@@ -142,6 +143,34 @@ class Application(QApplication):
 
         if (self.requested_theme == "dark") and (self.theme != "dark"):
             log.warning("Could not apply dark theme. Is QDarkStyle installed?")
+
+    @staticmethod
+    def _modern_palette():
+        """Base colors of the modern theme, for widgets the style sheet does not cover."""
+        palette = QPalette()
+        roles = {
+            QPalette.ColorRole.Window: "#F4F6F9",
+            QPalette.ColorRole.WindowText: "#1D2733",
+            QPalette.ColorRole.Base: "#FFFFFF",
+            QPalette.ColorRole.AlternateBase: "#F8FAFC",
+            QPalette.ColorRole.Text: "#1D2733",
+            QPalette.ColorRole.Button: "#FFFFFF",
+            QPalette.ColorRole.ButtonText: "#1D2733",
+            QPalette.ColorRole.Highlight: "#CFE0F7",
+            QPalette.ColorRole.HighlightedText: "#1D2733",
+            QPalette.ColorRole.ToolTipBase: "#25303D",
+            QPalette.ColorRole.ToolTipText: "#F1F4F8",
+            QPalette.ColorRole.PlaceholderText: "#8A94A3",
+            QPalette.ColorRole.Link: "#1660C9",
+            QPalette.ColorRole.Mid: "#C5CDD8",
+            QPalette.ColorRole.Midlight: "#E1E5EB",
+            QPalette.ColorRole.Dark: "#9AA6B5",
+        }
+        for role, color in roles.items():
+            palette.setColor(role, QColor(color))
+        for role in (QPalette.ColorRole.WindowText, QPalette.ColorRole.Text, QPalette.ColorRole.ButtonText):
+            palette.setColor(QPalette.ColorGroup.Disabled, role, QColor("#A6AFBB"))
+        return palette
 
     def _read_stylesheet(self, name):
         """Read a Qt style sheet from resources/themes, or '' if it is missing."""

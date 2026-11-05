@@ -33,7 +33,6 @@ class ErrorsDialog(QDialog):
         self.update()
 
     def update(self):
-        # TODO: Make sure the columns are wide enough
         self.model.clear()
         self.model.setHorizontalHeaderLabels(['Source', 'Aspect', 'Message'])
         for element, message in self.flowgraph.iter_error_messages():
@@ -51,7 +50,17 @@ class ErrorsDialog(QDialog):
                 aspect = QStandardItem("Param '{}'".format(element.name))
             else:
                 src = aspect = QStandardItem('')
-            self.model.appendRow([src, aspect, QStandardItem(message)])
+            # one line per error; the full text is in the tooltip
+            text = QStandardItem(" ".join(line.strip() for line in message.splitlines() if line.strip()))
+            text.setToolTip(message)
+            self.model.appendRow([src, aspect, text])
+        # Size the source and aspect columns to their text, the message takes the rest
+        self.treeview.setRootIsDecorated(False)
+        self.treeview.setAlternatingRowColors(True)
+        header = self.treeview.header()
+        header.setStretchLastSection(True)
+        for column in (0, 1):
+            self.treeview.resizeColumnToContents(column)
 
 
 class PropsDialog(QDialog):
