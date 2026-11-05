@@ -1,0 +1,436 @@
+options:
+  parameters:
+    id: train
+    title: Sine plus noise
+    generate_options: qt_gui
+    output_language: python
+    author: ''
+    category: '[GRC Hier Blocks]'
+    placement: (0,0)
+    run: 'True'
+    run_options: prompt
+    window_size: (1000,1000)
+    comment: ''
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate:
+    - 20
+    - 20
+    rotation: 0
+    state: enabled
+blocks:
+- name: samp_rate
+  id: variable
+  parameters:
+    comment: ''
+    value: '32000'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate:
+    - 200
+    - 20
+    rotation: 0
+    state: enabled
+- name: F
+  id: analog_sig_source_x
+  parameters:
+    comment: ''
+    affinity: ''
+    alias: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    amp: '1'
+    freq: '1'
+    offset: '0'
+    phase: '0'
+    samp_rate: samp_rate
+    type: float
+    waveform: analog.GR_SQR_WAVE
+    showports: 'False'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate:
+    - 150
+    - 250
+    rotation: 0
+    state: enabled
+- name: Gain2
+  id: blocks_multiply_const_vxx
+  parameters:
+    comment: ''
+    affinity: ''
+    alias: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    const: mu*g*M1
+    type: float
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate:
+    - 40
+    - 420
+    rotation: 0
+    state: enabled
+- name: Sum1
+  id: blocks_add_xx
+  parameters:
+    comment: ''
+    affinity: ''
+    alias: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    num_inputs: '3'
+    type: float
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate:
+    - 380
+    - 360
+    rotation: 0
+    state: enabled
+- name: Gain
+  id: blocks_multiply_const_vxx
+  parameters:
+    comment: ''
+    affinity: ''
+    alias: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    const: 1/M1
+    type: float
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate:
+    - 520
+    - 370
+    rotation: 0
+    state: enabled
+- name: Integrator
+  id: blocks_integrate_xx
+  parameters:
+    comment: ''
+    affinity: ''
+    alias: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    decim: '1'
+    type: float
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate:
+    - 700
+    - 370
+    rotation: 0
+    state: enabled
+- name: Integrator1
+  id: blocks_integrate_xx
+  parameters:
+    comment: ''
+    affinity: ''
+    alias: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    decim: '1'
+    type: float
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate:
+    - 900
+    - 370
+    rotation: 0
+    state: enabled
+- name: x1
+  id: qtgui_time_sink_x
+  parameters:
+    type: float
+    name: '''x1'''
+    size: '1024'
+    srate: samp_rate
+    nconnections: '1'
+    comment: ''
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate:
+    - 1120
+    - 360
+    rotation: 0
+    state: enabled
+- name: x1_dot
+  id: qtgui_time_sink_x
+  parameters:
+    type: float
+    name: '''x1_dot'''
+    size: '1024'
+    srate: samp_rate
+    nconnections: '1'
+    comment: ''
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate:
+    - 1000
+    - 180
+    rotation: 0
+    state: enabled
+- name: Sum2
+  id: blocks_add_xx
+  parameters:
+    comment: ''
+    affinity: ''
+    alias: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    num_inputs: '2'
+    type: float
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate:
+    - 400
+    - 600
+    rotation: 0
+    state: enabled
+- name: Gain1
+  id: blocks_multiply_const_vxx
+  parameters:
+    comment: ''
+    affinity: ''
+    alias: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    const: 1/M2
+    type: float
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate:
+    - 520
+    - 600
+    rotation: 0
+    state: enabled
+- name: Integrator2
+  id: blocks_integrate_xx
+  parameters:
+    comment: ''
+    affinity: ''
+    alias: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    decim: '1'
+    type: float
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate:
+    - 700
+    - 600
+    rotation: 0
+    state: enabled
+- name: Integrator3
+  id: blocks_integrate_xx
+  parameters:
+    comment: ''
+    affinity: ''
+    alias: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    decim: '1'
+    type: float
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate:
+    - 900
+    - 600
+    rotation: 0
+    state: enabled
+- name: x2
+  id: qtgui_time_sink_x
+  parameters:
+    type: float
+    name: '''x2'''
+    size: '1024'
+    srate: samp_rate
+    nconnections: '1'
+    comment: ''
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate:
+    - 1120
+    - 590
+    rotation: 0
+    state: enabled
+- name: Gain4
+  id: blocks_multiply_const_vxx
+  parameters:
+    comment: ''
+    affinity: ''
+    alias: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    const: mu*g*M2
+    type: float
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate:
+    - 620
+    - 700
+    rotation: 0
+    state: enabled
+- name: Subtract
+  id: blocks_sub_xx
+  parameters:
+    comment: ''
+    affinity: ''
+    alias: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    num_inputs: '2'
+    type: float
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate:
+    - 780
+    - 800
+    rotation: 0
+    state: enabled
+- name: Gain3
+  id: blocks_multiply_const_vxx
+  parameters:
+    comment: ''
+    affinity: ''
+    alias: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    const: k
+    type: float
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate:
+    - 560
+    - 820
+    rotation: 0
+    state: enabled
+connections:
+- - F
+  - '0'
+  - Sum1
+  - '0'
+- - Gain2
+  - '0'
+  - Sum1
+  - '1'
+- - Gain3
+  - '0'
+  - Sum1
+  - '2'
+- - Sum1
+  - '0'
+  - Gain
+  - '0'
+- - Gain
+  - '0'
+  - Integrator
+  - '0'
+- - Integrator
+  - '0'
+  - Integrator1
+  - '0'
+- - Integrator1
+  - '0'
+  - x1
+  - '0'
+- - Integrator
+  - '0'
+  - x1_dot
+  - '0'
+- - Integrator
+  - '0'
+  - Gain2
+  - '0'
+- - Integrator1
+  - '0'
+  - Subtract
+  - '0'
+- - Gain3
+  - '0'
+  - Sum2
+  - '0'
+- - Gain4
+  - '0'
+  - Sum2
+  - '1'
+- - Sum2
+  - '0'
+  - Gain1
+  - '0'
+- - Gain1
+  - '0'
+  - Integrator2
+  - '0'
+- - Integrator2
+  - '0'
+  - Integrator3
+  - '0'
+- - Integrator3
+  - '0'
+  - x2
+  - '0'
+- - Integrator2
+  - '0'
+  - Gain4
+  - '0'
+- - Integrator3
+  - '0'
+  - Subtract
+  - '1'
+- - Subtract
+  - '0'
+  - Gain3
+  - '0'
+metadata:
+  file_format: 1
+  grc_version: '3.10'

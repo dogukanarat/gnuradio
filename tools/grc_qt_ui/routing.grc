@@ -1,0 +1,264 @@
+options:
+  parameters:
+    id: routing_demo
+    title: Sine plus noise
+    generate_options: qt_gui
+    output_language: python
+    author: ''
+    category: '[GRC Hier Blocks]'
+    placement: (0,0)
+    run: 'True'
+    run_options: prompt
+    window_size: (1000,1000)
+    comment: ''
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate:
+    - 20
+    - 20
+    rotation: 0
+    state: enabled
+blocks:
+- name: samp_rate
+  id: variable
+  parameters:
+    comment: ''
+    value: '32000'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate:
+    - 200
+    - 20
+    rotation: 0
+    state: enabled
+- name: analog_sig_source_x_0
+  id: analog_sig_source_x
+  parameters:
+    amp: '1'
+    freq: '1000'
+    offset: '0'
+    phase: '0'
+    samp_rate: samp_rate
+    type: complex
+    waveform: analog.GR_COS_WAVE
+    comment: ''
+    affinity: ''
+    alias: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    showports: 'False'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate:
+    - 20
+    - 130
+    rotation: 0
+    state: enabled
+- name: analog_noise_source_x_0
+  id: analog_noise_source_x
+  parameters:
+    amp: '0.2'
+    noise_type: analog.GR_GAUSSIAN
+    seed: '0'
+    type: complex
+    comment: ''
+    affinity: ''
+    alias: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate:
+    - 20
+    - 330
+    rotation: 0
+    state: enabled
+- name: blocks_add_xx_0
+  id: blocks_add_xx
+  parameters:
+    num_inputs: '3'
+    type: complex
+    vlen: '1'
+    comment: ''
+    affinity: ''
+    alias: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate:
+    - 300
+    - 260
+    rotation: 0
+    state: enabled
+- name: blocks_throttle2_0
+  id: blocks_throttle2
+  parameters:
+    ignoretag: 'True'
+    limit: auto
+    maximum: '0.1'
+    samples_per_second: samp_rate
+    type: complex
+    vlen: '1'
+    comment: ''
+    affinity: ''
+    alias: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate:
+    - 420
+    - 250
+    rotation: 0
+    state: enabled
+- name: blocks_multiply_const_vxx_0
+  id: blocks_multiply_const_vxx
+  parameters:
+    const: '0.5'
+    type: complex
+    vlen: '1'
+    comment: ''
+    affinity: ''
+    alias: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate:
+    - 660
+    - 260
+    rotation: 0
+    state: enabled
+- name: qtgui_time_sink_x_0
+  id: qtgui_time_sink_x
+  parameters:
+    type: complex
+    name: '''Signal'''
+    size: '1024'
+    srate: samp_rate
+    nconnections: '1'
+    comment: ''
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate:
+    - 860
+    - 130
+    rotation: 0
+    state: enabled
+- name: qtgui_freq_sink_x_0
+  id: qtgui_freq_sink_x
+  parameters:
+    type: complex
+    name: '''Spectrum'''
+    fftsize: '1024'
+    bw: samp_rate
+    fc: '0'
+    nconnections: '2'
+    comment: ''
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate:
+    - 860
+    - 360
+    rotation: 0
+    state: enabled
+- name: blocks_delay_0
+  id: blocks_delay
+  parameters:
+    delay: '16'
+    num_ports: '1'
+    type: complex
+    vlen: '1'
+    showports: 'False'
+    comment: ''
+    affinity: ''
+    alias: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate:
+    - 560
+    - 470
+    rotation: 0
+    state: enabled
+- name: blocks_null_sink_0
+  id: blocks_null_sink
+  parameters:
+    num_inputs: '1'
+    type: complex
+    vlen: '1'
+    bus_structure_sink: '[[0,],]'
+    comment: ''
+    affinity: ''
+    alias: ''
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate:
+    - 300
+    - 600
+    rotation: 0
+    state: enabled
+connections:
+- - analog_sig_source_x_0
+  - '0'
+  - blocks_add_xx_0
+  - '0'
+- - analog_noise_source_x_0
+  - '0'
+  - blocks_add_xx_0
+  - '1'
+- - blocks_add_xx_0
+  - '0'
+  - blocks_throttle2_0
+  - '0'
+- - blocks_throttle2_0
+  - '0'
+  - blocks_multiply_const_vxx_0
+  - '0'
+- - blocks_multiply_const_vxx_0
+  - '0'
+  - qtgui_time_sink_x_0
+  - '0'
+- - blocks_multiply_const_vxx_0
+  - '0'
+  - qtgui_freq_sink_x_0
+  - '0'
+- - analog_sig_source_x_0
+  - '0'
+  - qtgui_freq_sink_x_0
+  - '1'
+- - blocks_multiply_const_vxx_0
+  - '0'
+  - blocks_delay_0
+  - '0'
+- - blocks_delay_0
+  - '0'
+  - blocks_add_xx_0
+  - '2'
+metadata:
+  file_format: 1
+  grc_version: '3.10'
