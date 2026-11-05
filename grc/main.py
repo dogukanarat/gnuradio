@@ -247,7 +247,15 @@ def main():
     elif args.framework == 'gtk':
         run_gtk(args, log)
     else:  # args.framework == None
-        if grc_version_from_config == 'grc_qt':
-            run_qt(args, log)
-        else:
+        # The Qt GUI is the default; the GTK GUI is used when it is chosen in
+        # the preferences or when PyQt6 is not available.
+        if grc_version_from_config == 'grc_gtk':
             run_gtk(args, log)
+        else:
+            try:
+                import PyQt6.QtWidgets  # noqa: F401
+            except ImportError as e:
+                log.warning(f"PyQt6 is not available ({e}), starting the GTK GUI instead")
+                run_gtk(args, log)
+            else:
+                run_qt(args, log)

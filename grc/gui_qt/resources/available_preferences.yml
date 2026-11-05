@@ -62,13 +62,13 @@ categories:
       - key: default_grc
         name: Default GRC version
         dtype: enum
-        default: grc_gtk
+        default: grc_qt
         options:
-          - grc_gtk
           - grc_qt
+          - grc_gtk
         option_labels:
-          - GRC Gtk
           - GRC Qt
+          - GRC Gtk
       - key: blocklibrary_expanded
         name: Expand blocklibrary on startup
         dtype: bool

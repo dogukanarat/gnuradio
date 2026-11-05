@@ -99,6 +99,8 @@ def run_main():
 
 if __name__ == '__main__':
     check_gnuradio_import()
-    check_gtk()
+    if '--gtk' in sys.argv[1:]:
+        # The Qt GUI is the default and does not need GTK
+        check_gtk()
     check_blocks_path()
     run_main()
