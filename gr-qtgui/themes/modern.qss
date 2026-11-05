@@ -1,0 +1,201 @@
+/*
+ * "Modern" light theme for QT GUI sinks, matching the modern theme of
+ * GNU Radio Companion: white plot canvas, slate text and axes, a quiet
+ * grid and clearly separated line colours.
+ *
+ * Select it in the Options block (QSS Theme) or in the [qtgui] qss
+ * setting of the GNU Radio config file.
+ */
+
+QWidget {
+    color: #1D2733;
+    background-color: #F4F6F9;
+    font-size: 12px;
+}
+
+QwtPlot {
+    padding: 8px;
+    font-size: 13px;
+    background-color: #FFFFFF;
+    border: 1px solid #D3D9E1;
+    border-radius: 4px;
+}
+
+QwtPlotCanvas {
+    background-color: #FFFFFF;
+    border: 1px solid #D3D9E1;
+    border-radius: 2px;
+}
+
+QwtScaleWidget {
+    color: #3C4757;
+    background-color: #FFFFFF;
+    font-size: 11px;
+}
+
+QwtTextLabel {
+    color: #1D2733;
+    background-color: #FFFFFF;
+    font-weight: 600;
+}
+
+QwtLegend, QwtLegendLabel, QwtLegend QWidget {
+    background-color: #FFFFFF;
+    color: #3C4757;
+    font-size: 11px;
+}
+
+DisplayPlot {
+    qproperty-zoomer_color: #1660C9;
+    qproperty-line_color1: #1660C9;
+    qproperty-line_color2: #E8710A;
+    qproperty-line_color3: #1B8A5A;
+    qproperty-line_color4: #8E44AD;
+    qproperty-line_color5: #C62828;
+    qproperty-line_color6: #00838F;
+    qproperty-line_color7: #6D4C41;
+    qproperty-line_color8: #546E7A;
+    qproperty-line_color9: #AD1457;
+    qproperty-axes_label_font_size: 12;
+}
+
+TimeDomainDisplayPlot {
+    qproperty-tag_text_color: #1D2733;
+    qproperty-tag_background_color: #E3EDFB;
+    qproperty-tag_background_style: SolidPattern;
+}
+
+WaterfallDisplayPlot {
+    /* user defined map from dark navy (weak) to near white (strong): the
+     * noise floor reads as blue-grey and signals stand out as light lines;
+     * rows not filled yet show the light end and blend with the page.
+     * The colours must come before the map type, which uses them. */
+    qproperty-low_intensity_color: #0E1A2B;
+    qproperty-high_intensity_color: #F2F7FF;
+    qproperty-intensity_color_map_type1: 4;
+    qproperty-color_map_title_font_size: 11;
+}
+
+FrequencyDisplayPlot {
+    qproperty-max_fft_color: #9DB9E3;
+    qproperty-min_fft_color: #9DB9E3;
+    qproperty-marker_lower_intensity_color: #6B7686;
+    qproperty-marker_upper_intensity_color: #C62828;
+    qproperty-marker_lower_intensity_visible: false;
+    qproperty-marker_upper_intensity_visible: false;
+    qproperty-marker_noise_floor_amplitude_color: #C62828;
+    qproperty-marker_noise_floor_amplitude_visible: false;
+}
+
+VectorDisplayPlot {
+    qproperty-max_vec_color: #9DB9E3;
+    qproperty-min_vec_color: #9DB9E3;
+    qproperty-marker_lower_intensity_color: #6B7686;
+    qproperty-marker_upper_intensity_color: #C62828;
+    qproperty-marker_lower_intensity_visible: false;
+    qproperty-marker_upper_intensity_visible: false;
+    qproperty-marker_ref_level_amplitude_color: #C62828;
+    qproperty-marker_ref_level_amplitude_visible: false;
+}
+
+ConstellationDisplayPlot, HistogramDisplayPlot, NumberDisplayPlot {
+    qproperty-line_color1: #1660C9;
+    qproperty-line_color2: #E8710A;
+}
+
+/* controls in QT GUI flowgraphs (ranges, choosers, entries) */
+QLineEdit, QPlainTextEdit, QComboBox, QSpinBox, QDoubleSpinBox {
+    background-color: #FFFFFF;
+    color: #1D2733;
+    border: 1px solid #D3D9E1;
+    border-radius: 3px;
+    padding: 3px 6px;
+    selection-background-color: #CFE0F7;
+    selection-color: #1D2733;
+}
+QLineEdit:focus, QComboBox:focus, QSpinBox:focus, QDoubleSpinBox:focus {
+    border-color: #1660C9;
+}
+
+QPushButton, QToolButton {
+    background-color: #FFFFFF;
+    color: #1D2733;
+    border: 1px solid #C5CDD8;
+    border-radius: 3px;
+    padding: 4px 12px;
+}
+QPushButton:hover, QToolButton:hover {
+    background-color: #E3EDFB;
+    border-color: #A9C5EC;
+}
+QPushButton:checked, QToolButton:checked {
+    background-color: #1660C9;
+    color: #FFFFFF;
+    border-color: #1252AE;
+}
+
+QSlider::groove:horizontal {
+    height: 4px;
+    background: #D3D9E1;
+    border-radius: 2px;
+}
+QSlider::sub-page:horizontal {
+    background: #1660C9;
+    border-radius: 2px;
+}
+QSlider::handle:horizontal {
+    background: #FFFFFF;
+    border: 1px solid #1660C9;
+    width: 14px;
+    margin: -6px 0;
+    border-radius: 7px;
+}
+
+QTabWidget::pane {
+    background-color: #FFFFFF;
+    border: 1px solid #D3D9E1;
+    top: -1px;
+}
+QTabBar::tab {
+    background-color: #EDF0F4;
+    color: #5B6676;
+    border: 1px solid #D3D9E1;
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+    padding: 5px 14px;
+    margin-top: 3px;
+    margin-right: 2px;
+}
+QTabBar::tab:selected {
+    background-color: #FFFFFF;
+    color: #1D2733;
+    border-top: 2px solid #1660C9;
+    border-bottom: 1px solid #FFFFFF;
+    margin-top: 0;
+    margin-bottom: -1px;
+    font-weight: 600;
+}
+
+QMenu {
+    background-color: #FFFFFF;
+    border: 1px solid #D3D9E1;
+}
+QMenu::item:selected {
+    background-color: #E3EDFB;
+    color: #1D2733;
+}
+
+QScrollBar:vertical {
+    background: transparent;
+    width: 10px;
+}
+QScrollBar::handle:vertical {
+    background: #C5CDD8;
+    min-height: 28px;
+    border-radius: 4px;
+    margin: 1px 2px;
+}
+QScrollBar::add-line, QScrollBar::sub-line {
+    width: 0;
+    height: 0;
+}

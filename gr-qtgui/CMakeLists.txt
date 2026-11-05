@@ -111,6 +111,7 @@ if(ENABLE_GR_QTGUI)
     install(FILES
             themes/alt.qss
             themes/dark.qss
+            themes/modern.qss
             themes/nsf.qss
             themes/plain.qss
             themes/projector.qss
