@@ -311,8 +311,18 @@ QLineEdit:disabled, QComboBox:disabled {
     color: #A6AFBB;
 }
 QComboBox::drop-down {
+    subcontrol-origin: padding;
+    subcontrol-position: center right;
     border: 0;
-    width: 18px;
+    width: 22px;
+}
+QComboBox::down-arrow {
+    image: url(@THEME_DIR@/chevron-down.svg);
+    width: 12px;
+    height: 12px;
+}
+QComboBox::down-arrow:disabled {
+    image: none;
 }
 QComboBox QAbstractItemView {
     background: #FFFFFF;
@@ -425,4 +435,63 @@ QProgressBar {
 QProgressBar::chunk {
     background: #1660C9;
     border-radius: 2px;
+}
+
+/* ------------------------------------------------- block properties dialog */
+QDialog#props_dialog {
+    background: #F4F6F9;
+}
+QWidget#props_header {
+    background: #FFFFFF;
+    border-bottom: 1px solid #E1E5EB;
+}
+QLabel#props_title {
+    font-size: 13pt;
+    font-weight: 600;
+    color: #1D2733;
+}
+QLabel#props_subtitle {
+    font-family: "DejaVu Sans Mono", "Menlo", "Consolas", monospace;
+    color: #6B7686;
+}
+QTabWidget#props_tabs::pane {
+    border: 0;
+    border-top: 1px solid #D3D9E1;
+    background: #FFFFFF;
+}
+QScrollArea#props_scroll, QWidget#props_page {
+    background: #FFFFFF;
+}
+QLabel#props_name {
+    color: #3C4757;
+}
+QLabel#props_dtype {
+    color: #97A0AD;
+    font-family: "DejaVu Sans Mono", "Menlo", "Consolas", monospace;
+    font-size: 8pt;
+    background: transparent;
+}
+QWidget#props_page QPlainTextEdit {
+    background: #FFFFFF;
+    border: 1px solid #D3D9E1;
+    border-radius: 3px;
+    padding: 2px;
+    font-family: "DejaVu Sans Mono", "Menlo", "Consolas", monospace;
+}
+QWidget#props_page QPlainTextEdit:focus {
+    border-color: #1660C9;
+}
+QLineEdit[invalid="true"], QComboBox[invalid="true"] {
+    border: 1px solid #D32F2F;
+    background: #FFF5F5;
+}
+QScrollArea#props_error_area {
+    background: #FFF5F5;
+    border: 0;
+    border-top: 1px solid #F2C4C4;
+}
+QLabel#props_error {
+    color: #A12020;
+    background: #FFF5F5;
+    padding: 8px 16px;
 }

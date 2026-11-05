@@ -37,6 +37,9 @@ OPERATOR_SYMBOLS = {
     "blocks_divide_xx": "\u00f7",
 }
 GAIN_BLOCKS = {"blocks_multiply_const_vxx", "blocks_multiply_const_xx"}
+# Input positions on a circle (degrees, counter-clockwise from the output on
+# the right) by number of inputs, as on Simulink's round sum block
+CIRCLE_INPUT_ANGLES = {0: (), 1: (180,), 2: (180, 270), 3: (90, 180, 270)}
 
 
 class Block(CoreBlock):
@@ -182,7 +185,7 @@ class GUIBlock(QGraphicsItem):
         if self.core.is_dummy_block:
             return None, ""
         key = self.core.key
-        if key in OPERATOR_SYMBOLS:
+        if key in OPERATOR_SYMBOLS and self._fits_circle():
             return "op", OPERATOR_SYMBOLS[key]
         if key in GAIN_BLOCKS:
             const = self.core.params.get("const")
@@ -191,6 +194,49 @@ class GUIBlock(QGraphicsItem):
                 text = text[:11] + "…"
             return "gain", text
         return None, ""
+
+    def _fits_circle(self):
+        """
+        A circle has room for one output (0 degrees) and up to three inputs
+        (90, 180 and 270 degrees). Other operator blocks are drawn as boxes.
+        """
+        sinks, sources = self.core.active_sinks, self.core.active_sources
+        if len(sinks) > max(CIRCLE_INPUT_ANGLES) or len(sources) != 1:
+            return False
+        return all(p.dtype != "bus" and p.domain != Constants.GR_MESSAGE_DOMAIN for p in sinks + sources)
+
+    def _place_circle_ports(self):
+        """
+        Put the ports of a circle block on its compass points, each pointing
+        at the centre, so lines always meet the circle at a right angle.
+        """
+        radius = self.width / 2.0
+        cx = cy = radius
+        sinks = self.core.active_sinks
+        for port, angle in zip(sinks, CIRCLE_INPUT_ANGLES[len(sinks)]):
+            g = port.gui
+            if angle == 180:      # left, flowing right
+                g.setRotation(0)
+                g.setPos(cx - radius - g.width, cy - g.height / 2)
+            elif angle == 90:     # top, flowing down
+                g.setRotation(90)
+                g.setPos(cx + g.height / 2, cy - radius - g.width)
+            else:                 # 270: bottom, flowing up
+                g.setRotation(270)
+                g.setPos(cx - g.height / 2, cy + radius + g.width)
+            g.update_connections()
+        for port in self.core.active_sources:
+            port.gui.setRotation(0)
+            port.gui.setPos(cx + radius, cy - port.gui.height / 2)
+            port.gui.update_connections()
+
+    def _label_rect(self):
+        """Where the name of a symbol shaped block is written (block coordinates)."""
+        if self.shape_kind == "op":
+            # below and to the right, clear of a line entering at the bottom
+            return QRectF(self.width / 2 + 8, self.height - 2, self._title_width + 4, LABEL_BELOW_HEIGHT)
+        half = self._title_width / 2 + 2
+        return QRectF(self.width / 2 - half, self.height + 3, 2 * half, LABEL_BELOW_HEIGHT)
 
     def create_shapes_and_labels(self):
         qsettings = getattr(QApplication.instance(), 'qsettings', None)
@@ -241,8 +287,7 @@ class GUIBlock(QGraphicsItem):
         self._title_width = title_fm.horizontalAdvance(self.core.label)
 
         if self.shape_kind == "op":
-            size = max(44, port_height)
-            self.width = self.height = size
+            self.width = self.height = 44
         elif self.shape_kind == "gain":
             symbol_fm = QFontMetrics(self.symbol_font)
             self.width = max(64, symbol_fm.horizontalAdvance(self.symbol) * 1.6 + 30)
@@ -266,7 +311,7 @@ class GUIBlock(QGraphicsItem):
             comment_w_line_breaks = self.core.comment.replace("\n", "<br>")
             markup_text += f"{comment_w_line_breaks}"
 
-        self.markup_item.setPos(0, self.height + (LABEL_BELOW_HEIGHT if self.label_below else 0))
+        self.markup_item.setPos(0, self._label_rect().bottom() if self.label_below else self.height)
         self.markup_item.setDefaultTextColor(
             colors.COMMENT_COLOR if self.core.enabled else colors.COMMENT_COLOR_DISABLED)
         self.markup_item.setHtml(markup_text)
@@ -282,6 +327,9 @@ class GUIBlock(QGraphicsItem):
             self.core.current_bus_structure["source"],
             self.core.current_bus_structure["sink"],
         )
+        if self.shape_kind == "op":
+            self._place_circle_ports()
+            bussified = ()
         for ports, has_busses in zip(
             (self.core.active_sources, self.core.active_sinks), bussified
         ):
@@ -296,6 +344,7 @@ class GUIBlock(QGraphicsItem):
                 self.height - (len(ports) - 1) * port_separation - ports[0].gui.height
             ) / 2
             for port in ports:
+                port.gui.setRotation(0)
                 if port._dir == "sink":
                     port.gui.setPos(-port.gui.width, offset)
                 else:
@@ -318,10 +367,10 @@ class GUIBlock(QGraphicsItem):
         left, right = -margin, self.width + margin
         bottom = self.height + margin
         if self.label_below:
-            half = self._title_width / 2 + 2
-            left = min(left, self.width / 2 - half - margin)
-            right = max(right, self.width / 2 + half + margin)
-            bottom = max(bottom, self.height + LABEL_BELOW_HEIGHT + 2 + margin)
+            label = self._label_rect()
+            left = min(left, label.left() - margin)
+            right = max(right, label.right() + margin)
+            bottom = max(bottom, label.bottom() + margin)
         self._bounds = QRectF(left, -margin, right - left, bottom + margin)
 
     def create_port_labels(self):
@@ -434,12 +483,8 @@ class GUIBlock(QGraphicsItem):
             # Name under the symbol, like a Simulink block label
             painter.setFont(self.font)
             painter.setPen(QPen(title_color))
-            half = self._title_width / 2 + 2
-            painter.drawText(
-                QRectF(self.width / 2 - half, self.height + 3, 2 * half, LABEL_BELOW_HEIGHT),
-                Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop,
-                self.core.label,
-            )
+            align = Qt.AlignmentFlag.AlignLeft if self.shape_kind == "op" else Qt.AlignmentFlag.AlignHCenter
+            painter.drawText(self._label_rect(), align | Qt.AlignmentFlag.AlignTop, self.core.label)
         else:
             self._paint_text(painter, title_color, enabled)
 
@@ -488,11 +533,8 @@ class GUIBlock(QGraphicsItem):
         pad = SELECTION_PADDING
         rect = QRectF(-pad, -pad, self.width + 2 * pad, self.height + 2 * pad)
         if self.label_below:
-            # include the name drawn under symbol shaped blocks
-            half = self._title_width / 2 + 2
-            left = min(rect.left(), self.width / 2 - half - 2)
-            right = max(rect.right(), self.width / 2 + half + 2)
-            rect = QRectF(left, rect.top(), right - left, self.height + LABEL_BELOW_HEIGHT + 2 + 2 * pad)
+            # include the name drawn next to symbol shaped blocks
+            rect = rect.united(self._label_rect().adjusted(-2, -2, 2, 2))
         pen = QPen(colors.HIGHLIGHT_COLOR)
         pen.setWidthF(1.3)
         pen.setStyle(Qt.PenStyle.DashLine)

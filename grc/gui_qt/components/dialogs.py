@@ -8,7 +8,7 @@ from PyQt6.QtGui import QStandardItem, QStandardItemModel
 from PyQt6.QtWidgets import (QLineEdit, QDialog, QDialogButtonBox, QTreeView,
                              QVBoxLayout, QTabWidget, QGridLayout, QWidget, QLabel,
                              QPushButton, QListWidget, QComboBox, QPlainTextEdit, QHBoxLayout,
-                             QFileDialog, QApplication, QScrollArea)
+                             QFileDialog, QApplication, QScrollArea, QFrame)
 
 
 class ErrorsDialog(QDialog):
@@ -77,19 +77,42 @@ class PropsDialog(QDialog):
                 seen.add(cat)
 
         self.edit_params = []
+        self.setObjectName("props_dialog")
+
+        # Header: block name and its id / key
+        header = QWidget()
+        header.setObjectName("props_header")
+        header.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        header_layout = QVBoxLayout(header)
+        header_layout.setContentsMargins(16, 12, 16, 10)
+        header_layout.setSpacing(2)
+        title = QLabel(self._block.label)
+        title.setObjectName("props_title")
+        block_id = self._block.params["id"].value if "id" in self._block.params else self._block.name
+        subtitle = QLabel(f"{block_id}  ·  {self._block.key}")
+        subtitle.setObjectName("props_subtitle")
+        subtitle.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        header_layout.addWidget(title)
+        header_layout.addWidget(subtitle)
 
         self.tabs = QTabWidget()
+        self.tabs.setObjectName("props_tabs")
+        self.tabs.setDocumentMode(True)
         self.ignore_dtype_labels = ["_multiline", "_multiline_python_external", "file_open", "file_save"]
 
         for cat in unique_categories():
-            qvb = self.build_param_entrys(cat)
-            tab = QWidget()
-            tab.setLayout(qvb)
             scrollarea = QScrollArea()
-            scrollarea.setWidget(tab)
+            scrollarea.setObjectName("props_scroll")
+            scrollarea.setWidgetResizable(True)
+            scrollarea.setFrameShape(QFrame.Shape.NoFrame)
+            scrollarea.setWidget(self._make_page(cat))
             self.tabs.addTab(scrollarea, cat)
 
         self.scroll_error = QScrollArea()
+        self.scroll_error.setObjectName("props_error_area")
+        self.scroll_error.setWidgetResizable(True)
+        self.scroll_error.setFrameShape(QFrame.Shape.NoFrame)
+        self.scroll_error.setMaximumHeight(110)
 
         # Add example tab
         self.example_tab = QWidget()
@@ -103,28 +126,63 @@ class PropsDialog(QDialog):
         self.buttonBox.accepted.connect(self.accept)
         self.buttonBox.rejected.connect(self.reject)
         self.layout = QVBoxLayout()
-        self.layout.addWidget(self.tabs)
+        self.layout.setContentsMargins(0, 0, 0, 12)
+        self.layout.setSpacing(0)
+        self.layout.addWidget(header)
+        self.layout.addWidget(self.tabs, 1)
 
         if self._block.enabled:
             self.scroll_error.hide()
             self.layout.addWidget(self.scroll_error)
 
             if self._block.get_error_messages():
-                error_msg = QLabel()
-                error_msg.setText('\n'.join(self._block.get_error_messages()))
-                self.scroll_error.setWidget(error_msg)
+                self.scroll_error.setWidget(self._error_label())
                 self.scroll_error.show()
 
+        self.buttonBox.setContentsMargins(16, 10, 16, 0)
         self.layout.addWidget(self.buttonBox)
 
         self.setLayout(self.layout)
         self._block.old_data = self._block.export_data()
 
+    def _make_page(self, cat):
+        """The widget holding the parameter rows of one tab."""
+        page = QWidget()
+        page.setObjectName("props_page")
+        page.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        page.setLayout(self.build_param_entrys(cat))
+        return page
+
+    def _error_label(self):
+        """The block's error messages, one per line, without the source indentation."""
+        lines = []
+        for message in self._block.get_error_messages():
+            lines += [line.strip() for line in message.splitlines() if line.strip()]
+        label = QLabel("\n".join(lines))
+        label.setObjectName("props_error")
+        label.setWordWrap(True)
+        label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        label.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
+        return label
+
+    @staticmethod
+    def _mark_validity(widget, param):
+        """Outline the editor of an invalid parameter (styled by the theme)."""
+        try:
+            valid = param.is_valid()
+        except Exception:
+            valid = True
+        widget.setProperty("invalid", not valid)
+        if not valid:
+            widget.setToolTip("\n".join(param.get_error_messages()) if hasattr(param, "get_error_messages") else "")
+
     def build_param_entrys(self, cat):
         qvb = QGridLayout()
         qvb.setAlignment(Qt.AlignmentFlag.AlignTop)
-        qvb.setVerticalSpacing(5)
-        qvb.setHorizontalSpacing(20)
+        qvb.setContentsMargins(16, 14, 16, 14)
+        qvb.setVerticalSpacing(8)
+        qvb.setHorizontalSpacing(14)
+        qvb.setColumnStretch(1, 1)
         i = 0
         for param in self._block.params.values():
             if self.force_show_id and param.dtype == 'id':
@@ -132,14 +190,24 @@ class PropsDialog(QDialog):
             if param.category == cat and param.hide != "all":
                 dtype_label = None
                 if param.dtype not in self.ignore_dtype_labels:
-                    dtype_label = QLabel(f"[{param.dtype}]")
-                qvb.addWidget(QLabel(param.name), i, 0)
+                    dtype_label = QLabel(param.dtype)
+                    dtype_label.setObjectName("props_dtype")
+                    dtype_label.setToolTip("Parameter type")
+                name_label = QLabel(param.name)
+                name_label.setObjectName("props_name")
+                if param.dtype in ("_multiline", "_multiline_python_external"):
+                    # multi-line editors: name at the top of the row
+                    name_label.setContentsMargins(0, 6, 0, 0)
+                    qvb.addWidget(name_label, i, 0, Qt.AlignmentFlag.AlignTop)
+                else:
+                    qvb.addWidget(name_label, i, 0)
                 if param.dtype == "enum" or param.options:
                     dropdown = QComboBox()
                     for opt in param.options.values():
                         dropdown.addItem(opt)
                     dropdown.param_values = list(param.options)
                     dropdown.param = param
+                    self._mark_validity(dropdown, param)
                     qvb.addWidget(dropdown, i, 1)
                     self.edit_params.append(dropdown)
                     if param.dtype == "enum":
@@ -158,6 +226,7 @@ class PropsDialog(QDialog):
                     dtype_label.setFlat(True)
                     file_name = QLineEdit(param.value)
                     file_name.param = param
+                    self._mark_validity(file_name, param)
                     qvb.addWidget(file_name, i, 1)
                     self.edit_params.append(file_name)
                     if param.dtype == "file_open":
@@ -184,12 +253,17 @@ class PropsDialog(QDialog):
                         self.qsettings.setValue("grc/editor", editor)
                     editor_widget = QWidget()
                     editor_widget.setLayout(QHBoxLayout())
+                    editor_widget.layout().setContentsMargins(0, 0, 0, 0)
                     open_editor_button = QPushButton("Open in Editor")
+                    open_editor_button.setDefault(False)
+                    open_editor_button.setAutoDefault(False)
                     open_editor_button.clicked.connect(open_editor)
                     choose_editor_button = QPushButton("Choose Editor")
+                    choose_editor_button.setAutoDefault(False)
                     choose_editor_button.clicked.connect(open_chooser)
                     editor_widget.layout().addWidget(open_editor_button)
                     editor_widget.layout().addWidget(choose_editor_button)
+                    editor_widget.layout().addStretch(1)
                     line_edit = QPlainTextEdit(param.value)
                     line_edit.param = param
                     qvb.addWidget(editor_widget, i, 1)
@@ -197,6 +271,7 @@ class PropsDialog(QDialog):
                     line_edit = QLineEdit(param.value)
                     line_edit.returnPressed.connect(self.gui_update)
                     line_edit.param = param
+                    self._mark_validity(line_edit, param)
                     qvb.addWidget(line_edit, i, 1)
                     self.edit_params.append(line_edit)
                 if dtype_label:
@@ -222,15 +297,11 @@ class PropsDialog(QDialog):
         self._block.validate()
         cat = self.tabs.tabText(index)
         self.edit_params.clear()
-        qvb = self.build_param_entrys(cat)
-        tab = QWidget()
-        tab.setLayout(qvb)
         to_delete.deleteLater()
-        self.tabs.currentWidget().setWidget(tab)
+        self.tabs.currentWidget().setWidget(self._make_page(cat))
         if self._block.enabled:
             if self._block.get_error_messages():
-                error_msg = QLabel()
-                error_msg.setText('\n'.join(self._block.get_error_messages()))
+                error_msg = self._error_label()
                 if self.scroll_error.widget():
                     to_delete = self.scroll_error.takeWidget()
                     to_delete.deleteLater()

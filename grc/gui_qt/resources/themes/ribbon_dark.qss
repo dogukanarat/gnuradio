@@ -86,3 +86,19 @@ QToolButton#ribbon_run:disabled {
     border-color: #24364F;
     color: #6F7F95;
 }
+
+/* block properties dialog */
+QLabel#props_title {
+    font-size: 13pt;
+    font-weight: 600;
+}
+QLabel#props_subtitle, QLabel#props_dtype {
+    color: #8892A0;
+}
+QLineEdit[invalid="true"], QComboBox[invalid="true"] {
+    border: 1px solid #FF5C5C;
+}
+QLabel#props_error {
+    color: #FF8A8A;
+    padding: 8px 16px;
+}

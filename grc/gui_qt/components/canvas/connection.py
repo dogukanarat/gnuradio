@@ -1,6 +1,6 @@
 from PyQt6.QtGui import QPainterPath, QPainterPathStroker, QPainter, QPen, QBrush, QPolygonF
 from PyQt6.QtWidgets import QGraphicsPathItem, QApplication
-from PyQt6.QtCore import QPointF, Qt
+from PyQt6.QtCore import QPointF, QRectF, Qt
 
 from enum import Enum
 
@@ -233,11 +233,17 @@ class GUIConnection(QGraphicsPathItem, StyledConnection):
                 continue
             if getattr(gui, "hide_variables", False) and (block.is_variable or block.is_import):
                 continue
-            # the bounding rect already includes a small margin around the block
-            r = gui.sceneBoundingRect()
+            if block in own:
+                # our own blocks: just the body, the lines start and end at it
+                r = gui.mapRectToScene(QRectF(0, 0, gui.width, gui.height)).adjusted(-8, -8, 8, 8)
+            else:
+                # the bounding rect already includes a small margin around the block
+                r = gui.sceneBoundingRect()
             for port in list(block.active_sources) + list(block.active_sinks):
                 port_gui = getattr(port, "gui", None)
                 if port_gui is None or port.hidden:
+                    continue
+                if block in own:
                     continue
                 pr = port_gui.sceneBoundingRect()
                 if block not in own:

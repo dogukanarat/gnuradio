@@ -34,6 +34,9 @@ CROSS_COST = 8.0
 OVERLAP_COST = 40.0
 # Length multiplier when running along a line of the same output
 SHARE_FACTOR = 0.35
+# Extra cost per unit length of running right along the edge of a block,
+# so lines keep to the middle of the gap between blocks when they can
+HUG_COST = 0.5
 # How far beyond the end points the router looks for a way around
 SEARCH_MARGIN = 300.0
 # Upper bound of grid nodes; above it the extra centre lines are dropped
@@ -65,9 +68,10 @@ def _overlap(a1, a2, b1, b2):
 class _Costs:
     """Cost of one straight grid edge against existing lines."""
 
-    def __init__(self, occupied, shared):
+    def __init__(self, occupied, shared, rects=()):
         self.occ_h, self.occ_v = _split(occupied)
         self.shr_h, self.shr_v = _split(shared)
+        self.rects = rects
 
     def edge(self, x1, y1, x2, y2):
         length = abs(x2 - x1) + abs(y2 - y1)
@@ -83,6 +87,9 @@ class _Costs:
             for sy, a, b in self.shr_h:
                 if abs(sy - y1) < 0.5:
                     cost -= (1.0 - SHARE_FACTOR) * _overlap(lo, hi, a, b)
+            for left, top, right, bottom in self.rects:
+                if abs(y1 - top) < 0.5 or abs(y1 - bottom) < 0.5:
+                    cost += HUG_COST * _overlap(lo, hi, left, right)
         else:                                          # vertical edge
             lo, hi = min(y1, y2), max(y1, y2)
             for ox, a, b in self.occ_v:
@@ -94,6 +101,9 @@ class _Costs:
             for sx, a, b in self.shr_v:
                 if abs(sx - x1) < 0.5:
                     cost -= (1.0 - SHARE_FACTOR) * _overlap(lo, hi, a, b)
+            for left, top, right, bottom in self.rects:
+                if abs(x1 - left) < 0.5 or abs(x1 - right) < 0.5:
+                    cost += HUG_COST * _overlap(lo, hi, top, bottom)
         return max(cost, length * SHARE_FACTOR)
 
 
@@ -203,7 +213,7 @@ def route(start, start_dir, end, end_dir, obstacles, occupied=(), shared=(), stu
         mx, my = (x1 + x2) / 2.0, (y1 + y2) / 2.0
         return any(_inside(mx, my, r) for r in rects)
 
-    costs = _Costs(occupied, shared)
+    costs = _Costs(occupied, shared, rects)
     start_node = (xi[s1[0]], yi[s1[1]])
     goal = (xi[e1[0]], yi[e1[1]])
     first_dirs = [start_dir] if start_dir is not None else list(_DIRS)
