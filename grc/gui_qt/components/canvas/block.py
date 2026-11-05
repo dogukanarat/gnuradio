@@ -479,7 +479,10 @@ class GUIBlock(QGraphicsItem):
             painter.drawText(QRectF(0, 0, self.width, self.height), Qt.AlignmentFlag.AlignCenter, self.symbol)
         else:
             painter.setFont(self.symbol_font)
-            painter.drawText(QRectF(4, 0, self.width * 0.62, self.height), Qt.AlignmentFlag.AlignCenter, self.symbol)
+            # The value sits in the wide part of the triangle. When the block is
+            # turned around the painter is flipped too, so mirror the box.
+            x = 4 if self.rotation() != 180 else self.width * 0.38 - 4
+            painter.drawText(QRectF(x, 0, self.width * 0.62, self.height), Qt.AlignmentFlag.AlignCenter, self.symbol)
 
     def _paint_selection(self, painter):
         pad = SELECTION_PADDING

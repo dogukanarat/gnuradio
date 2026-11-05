@@ -75,6 +75,7 @@ class FlowgraphScene(QGraphicsScene, base.Component):
         self.moving_blocks = False
 
         self.dummy_arrow = None
+        self._route_pass = None  # token of a refresh_connections() pass in progress
         self.start_port = None
         self.end_port = None
         self._elements_to_draw = []
@@ -111,11 +112,31 @@ class FlowgraphScene(QGraphicsScene, base.Component):
         self.app.VariableEditor.update_gui(self.core.blocks)
 
     def refresh_connections(self):
-        """Recompute the path of every connection (e.g. after blocks moved)."""
-        for connection in self.core.connections:
-            gui = getattr(connection, "gui", None)
-            if gui is not None:
+        """
+        Re-route every connection (e.g. after blocks moved).
+
+        Lines are routed one after the other, each one avoiding the lines
+        routed before it, so no line ends up on top of another. Forward lines
+        go first (they get the straight paths), feedback lines follow.
+        """
+        guis = [c.gui for c in self.core.connections if getattr(c, "gui", None) is not None]
+
+        def order(gui):
+            src = gui.source.gui.connection_point
+            snk = gui.sink.gui.connection_point
+            return (snk.x() < src.x(), src.x(), src.y(), snk.y())
+
+        token = object()
+        self._route_pass = token
+        try:
+            for gui in guis:
+                gui._pass = None
+            for gui in sorted(guis, key=order):
                 gui.update()
+            for gui in guis:
+                gui.update_branch_dot()
+        finally:
+            self._route_pass = None
 
     def update_elements_to_draw(self):
         # hide_disabled_blocks = Actions.TOGGLE_HIDE_DISABLED_BLOCKS.get_active()
