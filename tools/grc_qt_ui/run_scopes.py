@@ -16,7 +16,7 @@ if qss:
     app.setStyleSheet(open(qss).read())
 tb = cls()
 tb.start()
-tb.resize(1200, 900)
+tb.resize(int(sys.argv[5]) if len(sys.argv) > 5 else 1200, int(sys.argv[6]) if len(sys.argv) > 6 else 900)
 tb.show()
 
 
