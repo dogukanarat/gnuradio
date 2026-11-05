@@ -9,14 +9,25 @@
 #
 #
 
+import os
+
 @PY_QT_IMPORT@
 
 from gnuradio import gr
+
+
+def resolve_qss_path(qssfile):
+    """A bare file name such as "modern.qss" names one of the installed themes."""
+    if os.path.isabs(qssfile) or os.path.exists(qssfile) or os.sep in qssfile or "/" in qssfile:
+        return qssfile
+    return os.path.join(gr.prefix(), "share", "gnuradio", "themes", qssfile)
+
 
 def check_set_qss():
     app = QApplication
     qssfile = gr.prefs().get_string("qtgui", "qss", "")
     if(len(qssfile) > 0):
+        qssfile = resolve_qss_path(qssfile)
         try:
             app.setStyleSheet(open(qssfile).read())
         except:

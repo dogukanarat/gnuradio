@@ -126,10 +126,14 @@ class PreferencesDialog(QDialog):
 
                 elif item['dtype'] == 'enum':
                     item['_edit'] = QComboBox()
+                    value = self.rt_prefs.value(full_key, item['default'], type=str)
+                    if value not in item['options']:
+                        # e.g. a path written to config.conf by hand: keep it selectable
+                        item['options'] = list(item['options']) + [value]
+                        item['option_labels'] = list(item['option_labels']) + [value]
                     for opt in item['option_labels']:
                         item['_edit'].addItem(opt)
-                    index = item['options'].index(self.rt_prefs.value(full_key, item['default'], type=str))
-                    item['_edit'].setCurrentIndex(index)
+                    item['_edit'].setCurrentIndex(item['options'].index(value))
                 else:
                     if self.rt_prefs.contains(full_key):
                         item['_edit'] = QLineEdit(self.rt_prefs.value(full_key))

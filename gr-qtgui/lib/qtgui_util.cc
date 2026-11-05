@@ -10,12 +10,15 @@
 
 #include <gnuradio/qtgui/utils.h>
 
+#include <gnuradio/constants.h>
 #include <gnuradio/prefs.h>
 
 #include <QApplication>
 #include <QCoreApplication>
 #include <QDebug>
+#include <QDir>
 #include <QFile>
+#include <QFileInfo>
 
 QString get_qt_style_sheet(QString filename)
 {
@@ -70,11 +73,25 @@ QwtPickerMachine* QwtDblClickPlotPicker::stateMachine(int n) const
     return new QwtPickerDblClickPointMachine;
 }
 
+// BEGIN resolve_qss_path
+static QString resolve_qss_path(const std::string& qssfile)
+{
+    // A bare file name such as "modern.qss" names one of the installed themes
+    const QString path = QString::fromStdString(qssfile);
+    const QFileInfo info(path);
+    if (info.exists() || info.isAbsolute() || path.contains('/')) {
+        return path;
+    }
+    const QDir themes(QString::fromStdString(gr::prefix()) + "/share/gnuradio/themes");
+    return themes.filePath(path);
+}
+// END resolve_qss_path
+
 void check_set_qss(QApplication* app)
 {
     std::string qssfile = gr::prefs::singleton()->get_string("qtgui", "qss", "");
     if (!qssfile.empty()) {
-        QString sstext = get_qt_style_sheet(QString(qssfile.c_str()));
+        QString sstext = get_qt_style_sheet(resolve_qss_path(qssfile));
         app->setStyleSheet(sstext);
     }
 }

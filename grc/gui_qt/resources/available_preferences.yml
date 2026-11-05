@@ -177,6 +177,29 @@ runtime:
         name: Controlport enabled
         dtype: bool
         default: False
+  - key: qtgui
+    items:
+      - key: qss
+        name: Plot theme of running QT GUI flowgraphs
+        tooltip: Style sheet applied to QT GUI sinks and widgets when a flowgraph runs
+        dtype: enum
+        default: modern.qss
+        options:
+          - modern.qss
+          - dark.qss
+          - plain.qss
+          - alt.qss
+          - projector.qss
+          - nsf.qss
+          - ""
+        option_labels:
+          - Modern (light)
+          - Dark
+          - Plain
+          - Alt
+          - Projector
+          - NSF
+          - None (Qt default)
   - key: default
     items:
       - key: max_messages
