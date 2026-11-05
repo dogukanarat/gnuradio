@@ -1,0 +1,88 @@
+/*
+ * Ribbon rules added on top of QDarkStyle for the "dark" theme.
+ */
+QToolBar#_RibbonTb {
+    background: #0E1116;
+    border: 0;
+    padding: 0;
+    margin: 0;
+}
+QTabWidget#ribbon::pane {
+    background: #1B1F26;
+    border: 0;
+    border-bottom: 1px solid #2B313B;
+    top: 0;
+}
+QTabBar#ribbon_tabs {
+    background: #0E1116;
+}
+QTabBar#ribbon_tabs::tab {
+    background: transparent;
+    color: #8892A0;
+    padding: 6px 16px;
+    margin: 0 2px 0 0;
+    border: 0;
+    font-weight: 600;
+    min-width: 0;
+}
+QTabBar#ribbon_tabs::tab:first {
+    margin-left: 8px;
+}
+QTabBar#ribbon_tabs::tab:hover {
+    color: #E3E8EF;
+}
+QTabBar#ribbon_tabs::tab:selected {
+    background: #1B1F26;
+    color: #5AA2FF;
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+}
+QWidget#ribbon_page {
+    background: #1B1F26;
+}
+QFrame#ribbon_group {
+    background: transparent;
+    border: 0;
+    border-right: 1px solid #2B313B;
+}
+QLabel#ribbon_group_title {
+    color: #7F8A99;
+    background: transparent;
+    font-size: 9pt;
+    padding: 1px 0 3px 0;
+}
+QToolButton#ribbon_big, QToolButton#ribbon_small, QToolButton#ribbon_run {
+    color: #E3E8EF;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    padding: 3px 5px 2px 5px;
+}
+QToolButton#ribbon_small {
+    padding: 1px 6px 1px 3px;
+    text-align: left;
+}
+QToolButton#ribbon_big:hover, QToolButton#ribbon_small:hover {
+    background: #233247;
+    border-color: #2F4A6E;
+}
+QToolButton#ribbon_big:pressed, QToolButton#ribbon_small:pressed,
+QToolButton#ribbon_big:checked, QToolButton#ribbon_small:checked {
+    background: #1D3350;
+}
+QToolButton#ribbon_big:disabled, QToolButton#ribbon_small:disabled {
+    color: #5A6472;
+}
+QToolButton#ribbon_run {
+    background: #2F7BE0;
+    border-color: #2A6CC4;
+    color: #FFFFFF;
+}
+QToolButton#ribbon_run:hover {
+    background: #3B88EE;
+}
+QToolButton#ribbon_run:disabled {
+    background: #24364F;
+    border-color: #24364F;
+    color: #6F7F95;
+}

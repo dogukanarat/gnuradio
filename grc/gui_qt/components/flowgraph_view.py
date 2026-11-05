@@ -6,15 +6,15 @@ import logging
 import xml.etree.ElementTree as ET
 
 from ast import literal_eval
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QBrush, QAction
+from PyQt6.QtCore import Qt, QLineF
+from PyQt6.QtGui import QBrush, QAction, QPen
 from PyQt6.QtWidgets import QGraphicsView, QMenu
 
 # Custom modules
 from .canvas.block import Block
 from .. import base
 from .canvas.flowgraph import FlowgraphScene, Flowgraph
-from .canvas.colors import LIGHT_FLOWGRAPH_BACKGROUND_COLOR, DARK_FLOWGRAPH_BACKGROUND_COLOR
+from .canvas import colors
 from .canvas.block import GUIBlock
 
 from ...core.generator import Generator
@@ -24,6 +24,12 @@ log = logging.getLogger(f"grc.application.{__name__}")
 
 DEFAULT_MAX_X = 400
 DEFAULT_MAX_Y = 300
+
+# Background grid spacing in scene units; every GRID_MAJOR_EVERY-th line is darker
+GRID_SPACING = 20
+GRID_MAJOR_EVERY = 5
+# Zoom factor of the view that is shown as "100 %"
+DEFAULT_SCALE = 0.8
 
 
 class FlowgraphView(
@@ -46,10 +52,9 @@ class FlowgraphView(
             self.initEmpty()
 
         self.fitInView(self.scene().sceneRect(), Qt.AspectRatioMode.KeepAspectRatio)
-        if self.app.theme == "dark":
-            self.setBackgroundBrush(QBrush(DARK_FLOWGRAPH_BACKGROUND_COLOR))
-        else:
-            self.setBackgroundBrush(QBrush(LIGHT_FLOWGRAPH_BACKGROUND_COLOR))
+        self.setBackgroundBrush(QBrush(colors.FLOWGRAPH_BACKGROUND_COLOR))
+        self.show_grid = self.app.qsettings.value("appearance/show_grid", True, type=bool)
+        self.setViewportUpdateMode(QGraphicsView.ViewportUpdateMode.SmartViewportUpdate)
 
         self.isPanning = False
         self.mousePressed = False
@@ -61,6 +66,42 @@ class FlowgraphView(
 
     def createActions(self, actions):
         log.debug("Creating actions")
+
+    def drawBackground(self, painter, rect):
+        """Plain canvas with a light engineering grid."""
+        painter.fillRect(rect, colors.FLOWGRAPH_BACKGROUND_COLOR)
+        if not self.show_grid:
+            return
+        # Skip the minor lines when they would be closer than 6 px on screen
+        scale = self.transform().m11() or 1.0
+        step = GRID_SPACING if GRID_SPACING * scale >= 6 else GRID_SPACING * GRID_MAJOR_EVERY
+        minor, major = [], []
+        left = int(rect.left()) - int(rect.left()) % step
+        top = int(rect.top()) - int(rect.top()) % step
+        x = left
+        while x < rect.right():
+            line = QLineF(x, rect.top(), x, rect.bottom())
+            (major if x % (GRID_SPACING * GRID_MAJOR_EVERY) == 0 else minor).append(line)
+            x += step
+        y = top
+        while y < rect.bottom():
+            line = QLineF(rect.left(), y, rect.right(), y)
+            (major if y % (GRID_SPACING * GRID_MAJOR_EVERY) == 0 else minor).append(line)
+            y += step
+        for lines, color in ((minor, colors.GRID_MINOR_COLOR), (major, colors.GRID_MAJOR_COLOR)):
+            pen = QPen(color)
+            pen.setCosmetic(True)
+            pen.setWidth(1)
+            painter.setPen(pen)
+            painter.drawLines(lines)
+
+    def set_grid_visible(self, visible):
+        self.show_grid = visible
+        self.resetCachedContent()
+        self.viewport().update()
+
+    def zoom_percent(self) -> int:
+        return int(round(self.transform().m11() / DEFAULT_SCALE * 100))
 
     def contextMenuEvent(self, event):
         if self.scene().selected_blocks():
@@ -131,6 +172,9 @@ class FlowgraphView(
             self.setTransformationAnchor(anchor)
             self.setResizeAnchor(anchor)
             self.scale(factor, factor)
+            main_window = getattr(self.app, "MainWindow", None)
+            if main_window is not None:
+                main_window.updateStatusInfo()
 
     def zoomOriginal(self):
         # TODO: Original scale factor as a constant?

@@ -95,17 +95,24 @@ categories:
         name: Theme (requires restart)
         tooltip: Choose the theme
         dtype: enum
-        default: dark
+        default: modern
         options:
+          - modern
           - light
           - dark
         option_labels:
-          - Light
+          - Modern
+          - Light (system style)
           - Dark
+      - key: ribbon
+        name: Show ribbon toolbar (requires restart)
+        tooltip: Show the tabbed ribbon instead of the classic toolbars
+        dtype: bool
+        default: true
       - key: connection_style
         name: Connection style
         dtype: enum
-        default: CURVED
+        default: ANGLED
         options:
           - CURVED
           - ANGLED

@@ -28,6 +28,7 @@ from PyQt6.QtWidgets import QApplication
 
 # Custom modules
 from . import components
+from .components.canvas import colors as canvas_colors
 from .helpers.profiling import StopWatch
 
 # Logging
@@ -56,15 +57,21 @@ class Application(QApplication):
         QApplication.setAttribute(Qt.ApplicationAttribute.AA_ShareOpenGLContexts, True)
         QApplication.__init__(self, settings.argv)
 
+        self.requested_theme = self.qsettings.value("appearance/theme", "modern", type=str)
         self.theme = "light"
-        if self.qsettings.value("appearance/theme", "dark") == "dark":
+        if self.requested_theme == "dark":
             try:
                 import qdarkstyle
 
-                self.setStyleSheet(qdarkstyle.load_stylesheet())
+                self.setStyleSheet(qdarkstyle.load_stylesheet() + self._read_stylesheet("ribbon_dark.qss"))
                 self.theme = "dark"
             except ImportError:
                 log.warning("Did not find QDarkstyle. Dark mode disabled")
+        elif self.requested_theme == "modern":
+            self.setStyle("Fusion")
+            self.setStyleSheet(self._read_stylesheet("modern.qss"))
+            self.theme = "modern"
+        canvas_colors.set_theme(self.theme)
 
         # Load the main view class and initialize QMainWindow
         log.debug("ARGV - {0}".format(settings.argv))
@@ -133,8 +140,21 @@ class Application(QApplication):
 
         log.debug(f'devicePixelRatio {self.MainWindow.screen().devicePixelRatio()}')
 
-        if (self.qsettings.value("appearance/theme", "dark") == "dark") and (self.theme == "light"):
+        if (self.requested_theme == "dark") and (self.theme != "dark"):
             log.warning("Could not apply dark theme. Is QDarkStyle installed?")
+
+    def _read_stylesheet(self, name):
+        """Read a Qt style sheet from resources/themes, or '' if it is missing."""
+        theme_dir = os.path.join(self.settings.path.RESOURCES, "themes")
+        path = os.path.join(theme_dir, name)
+        try:
+            with open(path, encoding="utf-8") as qss:
+                # url() in a style sheet is resolved against the working
+                # directory, so image references use a placeholder
+                return qss.read().replace("@THEME_DIR@", theme_dir.replace(os.sep, "/"))
+        except OSError as e:
+            log.warning(f"Could not load style sheet {path}: {e}")
+            return ""
 
     # Global registration functions
     #  - Handles the majority of child controller interaciton

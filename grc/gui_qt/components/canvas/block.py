@@ -1,6 +1,6 @@
 import logging
 
-from PyQt6.QtGui import QPen, QPainter, QBrush, QFont, QFontMetrics, QColor, QAction
+from PyQt6.QtGui import QPen, QPainter, QPainterPath, QPolygonF, QBrush, QFont, QFontMetrics, QColor, QAction
 from PyQt6.QtCore import Qt, QPointF, QRectF, QUrl
 from PyQt6.QtWidgets import QGraphicsItem, QApplication, QGraphicsTextItem
 
@@ -19,6 +19,24 @@ LONG_VALUE = 20  # maximum length of a param string.
 # if exceeded, '...' will be displayed
 
 DO_NOT_HIDE_ID_BLOCKS = ["options"]
+
+# Block layout (scene units)
+TITLE_HEIGHT = 30       # band holding the block name
+ROW_HEIGHT = 20         # one parameter row
+BOTTOM_PADDING = 5
+TEXT_PADDING = 10       # left/right padding of the text
+BLOCK_RADIUS = 3.0
+SELECTION_PADDING = 6   # gap between block and selection frame
+LABEL_BELOW_HEIGHT = 16  # name drawn under symbol shaped blocks
+
+# Elementary math blocks drawn as symbols instead of boxes
+OPERATOR_SYMBOLS = {
+    "blocks_add_xx": "+",
+    "blocks_sub_xx": "\u2212",
+    "blocks_multiply_xx": "\u00d7",
+    "blocks_divide_xx": "\u00f7",
+}
+GAIN_BLOCKS = {"blocks_multiply_const_vxx", "blocks_multiply_const_xx"}
 
 
 class Block(CoreBlock):
@@ -75,7 +93,23 @@ class GUIBlock(QGraphicsItem):
         super(GUIBlock, self).__init__()
         self.core = core
         self.parent = parent
-        self.font = QFont("Helvetica", 10)
+        self.font = QFont()
+        self.font.setPointSizeF(9.0)
+        self.font.setBold(True)
+        self.param_name_font = QFont()
+        self.param_name_font.setPointSizeF(8.5)
+        self.param_value_font = QFont(self.param_name_font)
+        self.param_value_font.setWeight(QFont.Weight.Medium)
+        self.symbol_font = QFont()
+        self.symbol_font.setPointSizeF(11.0)
+        self.symbol_font.setBold(True)
+        self.op_font = QFont()
+        self.op_font.setPointSizeF(17.0)
+        self.op_font.setBold(True)
+        self._rows = []
+        self._title_width = 0
+        self.shape_kind, self.symbol, self.label_below = None, "", False
+        self._bounds = QRectF(0, 0, 50, 35)
         self.markup_item = QGraphicsTextItem(self)
 
         self.create_shapes_and_labels()
@@ -116,6 +150,48 @@ class GUIBlock(QGraphicsItem):
         self.show_param_expr = qsettings.value("grc/show_param_expr", type=bool)
         self.show_param_val = qsettings.value("grc/show_param_val", type=bool)
 
+    def _param_lines(self):
+        """The (name, value, is_valid) rows shown inside the block."""
+        rows = []
+        if self.core.is_dummy_block:
+            return [("key", self.core.key, False)]
+        for key, item in self.core.params.items():
+            if not self._is_item_visible(item):
+                continue
+            value = item.value
+            try:
+                is_evaluated = item.value != str(item.get_evaluated())
+            except Exception:
+                is_evaluated = False
+
+            display_value = ""
+            # Include the value defined by the user (after evaluation)
+            if not is_evaluated or self.show_param_val or not self.show_param_expr:
+                display_value += item.options[value] if value in item.options else value  # TODO: pretty_print
+            # Include the expression that was evaluated to get the value
+            if is_evaluated and self.show_param_expr:
+                display_value = value + "=" + display_value if display_value else value
+
+            if len(display_value) > LONG_VALUE:
+                display_value = display_value[:LONG_VALUE - 3] + '...'
+            rows.append((item.name, display_value, item.is_valid()))
+        return rows
+
+    def _shape_for_block(self):
+        """Simulink style symbols for a few elementary math blocks."""
+        if self.core.is_dummy_block:
+            return None, ""
+        key = self.core.key
+        if key in OPERATOR_SYMBOLS:
+            return "op", OPERATOR_SYMBOLS[key]
+        if key in GAIN_BLOCKS:
+            const = self.core.params.get("const")
+            text = const.value if const is not None else "K"
+            if len(text) > 12:
+                text = text[:11] + "…"
+            return "gain", text
+        return None, ""
+
     def create_shapes_and_labels(self):
         qsettings = getattr(QApplication.instance(), 'qsettings', None)
         if qsettings is None:
@@ -127,16 +203,10 @@ class GUIBlock(QGraphicsItem):
             qsettings = QSettings()
         self._load_settings(qsettings)
         self.prepareGeometryChange()
-        self.font.setBold(True)
 
-        # figure out height of block based on how many params there are
-        self.height = 35
-        if self.core.is_dummy_block:
-            self.height += 20
-        else:
-            for key, item in self.core.params.items():
-                if self._is_item_visible(item):
-                    self.height += 20
+        self._rows = self._param_lines()
+        self.shape_kind, self.symbol = self._shape_for_block()
+        self.label_below = self.shape_kind is not None
 
         # Check if we need to increase the height to fit all the ports
         def get_min_height_for_ports(ports):
@@ -160,33 +230,32 @@ class GUIBlock(QGraphicsItem):
                     min_height -= ports[-1].gui.height
             return min_height
 
-        self.height = max(
-            self.height,
+        port_height = max(
             get_min_height_for_ports(self.core.active_sinks),
             get_min_height_for_ports(self.core.active_sources),
         )
 
-        # Figure out width of block based on widest line of text
-        fm = QFontMetrics(self.font)
-        largest_width = fm.horizontalAdvance(self.core.label)
-        if self.core.is_dummy_block:
-            full_line = "key: " + self.core.key
-            if fm.horizontalAdvance(full_line) > largest_width:
-                largest_width = fm.horizontalAdvance(full_line)
+        title_fm = QFontMetrics(self.font)
+        name_fm = QFontMetrics(self.param_name_font)
+        value_fm = QFontMetrics(self.param_value_font)
+        self._title_width = title_fm.horizontalAdvance(self.core.label)
+
+        if self.shape_kind == "op":
+            size = max(44, port_height)
+            self.width = self.height = size
+        elif self.shape_kind == "gain":
+            symbol_fm = QFontMetrics(self.symbol_font)
+            self.width = max(64, symbol_fm.horizontalAdvance(self.symbol) * 1.6 + 30)
+            self.height = max(48, port_height)
         else:
-            for key, item in self.core.params.items():
-                name = item.name
-                value = item.value
-                if (value is not None and item.hide == "none") or (item.dtype == 'id' and self.force_show_id):
-                    if len(value) > LONG_VALUE:
-                        value = value[:LONG_VALUE - 3] + '...'
-
-                    value_label = item.options[value] if value in item.options else value
-                    full_line = name + ": " + value_label
-
-                    if fm.horizontalAdvance(full_line) > largest_width:
-                        largest_width = fm.horizontalAdvance(full_line)
-        self.width = largest_width + 15
+            # Height: title band plus one row per visible parameter
+            self.height = max(TITLE_HEIGHT + ROW_HEIGHT * len(self._rows) + BOTTOM_PADDING, 35, port_height)
+            # Width: widest line of text
+            largest_width = self._title_width
+            for name, value, _ in self._rows:
+                row_width = name_fm.horizontalAdvance(name + ": ") + value_fm.horizontalAdvance(value)
+                largest_width = max(largest_width, row_width)
+            self.width = largest_width + 2 * TEXT_PADDING
 
         markup_text = ""
         if self.show_complexity and self.core.key == "options":
@@ -197,12 +266,18 @@ class GUIBlock(QGraphicsItem):
             comment_w_line_breaks = self.core.comment.replace("\n", "<br>")
             markup_text += f"{comment_w_line_breaks}"
 
-        self.markup_item.setPos(0, self.height)
-        self.markup_item.setDefaultTextColor(QColor("#444" if self.core.enabled else "#888"))
+        self.markup_item.setPos(0, self.height + (LABEL_BELOW_HEIGHT if self.label_below else 0))
+        self.markup_item.setDefaultTextColor(
+            colors.COMMENT_COLOR if self.core.enabled else colors.COMMENT_COLOR_DISABLED)
         self.markup_item.setHtml(markup_text)
         self.markup_item.setVisible(self.show_block_comments)
 
-        # Update the position and size of all the ports
+        # Update the position and size of all the ports. The ports compute
+        # their own width first, because sinks hang off the left border.
+        for ports in (self.core.active_sources, self.core.active_sinks):
+            for port in ports:
+                port.gui.create_shapes_and_labels()
+
         bussified = (
             self.core.current_bus_structure["source"],
             self.core.current_bus_structure["sink"],
@@ -222,10 +297,11 @@ class GUIBlock(QGraphicsItem):
             ) / 2
             for port in ports:
                 if port._dir == "sink":
-                    port.gui.setPos(-15, offset)
+                    port.gui.setPos(-port.gui.width, offset)
                 else:
+                    # for the gain triangle this is its tip
                     port.gui.setPos(self.width, offset)
-                port.gui.create_shapes_and_labels()
+                port.gui.update_connections()
 
                 offset += (
                     Constants.PORT_SEPARATION
@@ -234,8 +310,19 @@ class GUIBlock(QGraphicsItem):
                 )
 
         self._update_colors()
-        self.create_port_labels()
+        self._update_bounds()
         self.setTransformOriginPoint(self.width / 2, self.height / 2)
+
+    def _update_bounds(self):
+        margin = SELECTION_PADDING + 4
+        left, right = -margin, self.width + margin
+        bottom = self.height + margin
+        if self.label_below:
+            half = self._title_width / 2 + 2
+            left = min(left, self.width / 2 - half - margin)
+            right = max(right, self.width / 2 + half + margin)
+            bottom = max(bottom, self.height + LABEL_BELOW_HEIGHT + 2 + margin)
+        self._bounds = QRectF(left, -margin, right - left, bottom + margin)
 
     def create_port_labels(self):
         for ports in (self.core.active_sinks, self.core.active_sources):
@@ -256,52 +343,85 @@ class GUIBlock(QGraphicsItem):
             if self.core.state == "enabled":
                 if self.core.deprecated:
                     return colors.BLOCK_DEPRECATED_BACKGROUND_COLOR
+                if self._is_definition_block():
+                    return colors.VARIABLE_BACKGROUND_COLOR
                 return colors.BLOCK_ENABLED_COLOR
             return colors.BLOCK_DISABLED_COLOR
 
         self._bg_color = get_bg()
 
+    def _is_definition_block(self):
+        """Blocks without ports that only define things (variables, imports, options)."""
+        return (
+            not self.core.active_sources and not self.core.active_sinks and
+            (self.core.is_variable or self.core.is_import or self.core.key in DO_NOT_HIDE_ID_BLOCKS)
+        )
+
     def move(self, x, y):
         self.moveBy(x, y)
         self.core.states["coordinate"] = (self.x(), self.y())
+
+    def _border_pen(self):
+        color = colors.BORDER_COLOR
+        style = Qt.PenStyle.SolidLine
+        width = 1.3
+        if self.core.is_dummy_block:
+            color = colors.MISSING_BLOCK_BORDER_COLOR
+        elif self.core.deprecated:
+            color = colors.BLOCK_DEPRECATED_BORDER_COLOR
+        elif self.core.state == "disabled":
+            color = colors.BORDER_COLOR_DISABLED
+            style = Qt.PenStyle.DashLine
+        elif self.core.state == "bypassed":
+            style = Qt.PenStyle.DashDotLine
+        elif self._is_definition_block():
+            color = colors.VARIABLE_BORDER_COLOR
+            style = Qt.PenStyle.DashLine
+            width = 1.0
+        pen = QPen(color)
+        pen.setWidthF(width)
+        pen.setStyle(style)
+        pen.setJoinStyle(Qt.PenJoinStyle.MiterJoin)
+        return pen
+
+    def _outline(self):
+        path = QPainterPath()
+        w, h = self.width, self.height
+        if self.shape_kind == "op":
+            path.addEllipse(QRectF(0, 0, w, h))
+        elif self.shape_kind == "gain":
+            path.addPolygon(QPolygonF([QPointF(0, 0), QPointF(w, h / 2), QPointF(0, h), QPointF(0, 0)]))
+            path.closeSubpath()
+        else:
+            path.addRoundedRect(QRectF(0, 0, w, h), BLOCK_RADIUS, BLOCK_RADIUS)
+        return path
 
     def paint(self, painter, option, widget):
         if (self.hide_variables and (self.core.is_variable or self.core.is_import)) or (self.hide_disabled_blocks and not self.core.enabled):
             return
 
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        self.font.setBold(True)
+        painter.setRenderHint(QPainter.RenderHint.TextAntialiasing)
+        outline = self._outline()
 
-        # TODO: Make sure this is correct
-        border_color = colors.BORDER_COLOR
+        # Soft drop shadow for enabled blocks
+        if self.core.enabled and not self._is_definition_block():
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(QBrush(colors.BLOCK_SHADOW_COLOR))
+            painter.drawPath(outline.translated(0, 2))
+
+        painter.setPen(self._border_pen())
+        painter.setBrush(QBrush(self._bg_color))
+        painter.drawPath(outline)
 
         if self.isSelected():
-            border_color = colors.HIGHLIGHT_COLOR
-        else:
-            if self.core.is_dummy_block:
-                border_color = colors.MISSING_BLOCK_BORDER_COLOR
-            elif self.core.deprecated:
-                border_color = colors.BLOCK_DEPRECATED_BORDER_COLOR
-            elif self.core.state == "disabled":
-                border_color = colors.BORDER_COLOR_DISABLED
+            self._paint_selection(painter)
 
-        pen = QPen(1)
-        pen = QPen(border_color)
-
-        pen.setWidth(3)
-        painter.setPen(pen)
-        painter.setBrush(QBrush(self._bg_color))
-        rect = QRectF(0, 0, self.width, self.height)
-
-        painter.drawRect(rect)
-        painter.setPen(QPen(1))
-
-        # Draw block label text
-        painter.setFont(self.font)
-        if self.core.is_valid():
-            painter.setPen(Qt.GlobalColor.black)
-        else:
-            painter.setPen(Qt.GlobalColor.red)
+        enabled = self.core.state != "disabled"
+        valid = self.core.is_valid()
+        title_color = colors.FONT_COLOR if valid else colors.ERROR_FONT_COLOR
+        if not enabled:
+            title_color = colors.BORDER_COLOR_DISABLED
 
         # Adjust the painter if parent block is 180 degrees rotated
         if self.rotation() == 180:
@@ -309,95 +429,96 @@ class GUIBlock(QGraphicsItem):
             painter.rotate(180)
             painter.translate(-self.width / 2, -self.height / 2)
 
-        painter.drawText(
-            QRectF(0, 0 - self.height / 2 + 15, self.width, self.height),
-            Qt.AlignmentFlag.AlignCenter,
-            self.core.label,
-        )
-
-        # Draw param text
-        y_offset = 30  # params start 30 down from the top of the box
-
-        if self.core.is_dummy_block:
-            painter.setPen(QPen(1))
-            self.font.setBold(True)
+        if self.shape_kind is not None:
+            self._paint_symbol(painter, title_color if valid else colors.ERROR_FONT_COLOR)
+            # Name under the symbol, like a Simulink block label
             painter.setFont(self.font)
+            painter.setPen(QPen(title_color))
+            half = self._title_width / 2 + 2
             painter.drawText(
-                QRectF(7.5, 0 + y_offset, self.width, self.height),
-                Qt.AlignmentFlag.AlignLeft,
-                "key: ",
+                QRectF(self.width / 2 - half, self.height + 3, 2 * half, LABEL_BELOW_HEIGHT),
+                Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop,
+                self.core.label,
             )
-            fm = QFontMetrics(self.font)
-            self.font.setBold(False)
-            painter.setFont(self.font)
-            painter.drawText(
-                QRectF(
-                    7.5 + fm.horizontalAdvance("key: "),
-                    0 + y_offset,
-                    self.width,
-                    self.height,
-                ),
-                Qt.AlignmentFlag.AlignLeft,
-                self.core.key,
-            )
-            y_offset += 20
         else:
-            for key, item in self.core.params.items():
-                name = item.name
-                value = item.value
-                is_evaluated = item.value != str(item.get_evaluated())
+            self._paint_text(painter, title_color, enabled)
 
-                display_value = ""
+        if not valid and enabled:
+            self._paint_error_badge(painter)
 
-                # Include the value defined by the user (after evaluation)
-                if not is_evaluated or self.show_param_val or not self.show_param_expr:
-                    display_value += item.options[value] if value in item.options else value  # TODO: pretty_print
+    def _paint_text(self, painter, title_color, enabled):
+        # Title: centred in the top band, or in the whole block when it has no rows
+        painter.setFont(self.font)
+        painter.setPen(QPen(title_color))
+        if self._rows:
+            title_rect = QRectF(0, 4, self.width, TITLE_HEIGHT - 6)
+        else:
+            title_rect = QRectF(0, 0, self.width, self.height)
+        painter.drawText(title_rect, Qt.AlignmentFlag.AlignCenter, self.core.label)
 
-                # Include the expression that was evaluated to get the value
-                if is_evaluated and self.show_param_expr:
-                    expr_string = value  # TODO: Truncate
+        name_color = colors.PARAM_NAME_COLOR if enabled else colors.BORDER_COLOR_DISABLED
+        value_color = colors.PARAM_VALUE_COLOR if enabled else colors.BORDER_COLOR_DISABLED
+        name_fm = QFontMetrics(self.param_name_font)
+        y = TITLE_HEIGHT
+        for name, value, is_valid in self._rows:
+            label = name + ": "
+            painter.setFont(self.param_name_font)
+            painter.setPen(QPen(name_color if is_valid else colors.ERROR_FONT_COLOR))
+            painter.drawText(QRectF(TEXT_PADDING, y, self.width, ROW_HEIGHT),
+                             Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, label)
+            painter.setFont(self.param_value_font)
+            painter.setPen(QPen(value_color if is_valid else colors.ERROR_FONT_COLOR))
+            painter.drawText(QRectF(TEXT_PADDING + name_fm.horizontalAdvance(label), y, self.width, ROW_HEIGHT),
+                             Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, value)
+            y += ROW_HEIGHT
 
-                    if display_value:  # We are already displaying the value
-                        display_value = expr_string + "=" + display_value
-                    else:
-                        display_value = expr_string
+    def _paint_symbol(self, painter, color):
+        painter.setPen(QPen(color))
+        if self.shape_kind == "op":
+            painter.setFont(self.op_font)
+            painter.drawText(QRectF(0, 0, self.width, self.height), Qt.AlignmentFlag.AlignCenter, self.symbol)
+        else:
+            painter.setFont(self.symbol_font)
+            painter.drawText(QRectF(4, 0, self.width * 0.62, self.height), Qt.AlignmentFlag.AlignCenter, self.symbol)
 
-                if len(display_value) > LONG_VALUE:
-                    display_value = display_value[:LONG_VALUE - 3] + '...'
+    def _paint_selection(self, painter):
+        pad = SELECTION_PADDING
+        rect = QRectF(-pad, -pad, self.width + 2 * pad, self.height + 2 * pad)
+        if self.label_below:
+            # include the name drawn under symbol shaped blocks
+            half = self._title_width / 2 + 2
+            left = min(rect.left(), self.width / 2 - half - 2)
+            right = max(rect.right(), self.width / 2 + half + 2)
+            rect = QRectF(left, rect.top(), right - left, self.height + LABEL_BELOW_HEIGHT + 2 + 2 * pad)
+        pen = QPen(colors.HIGHLIGHT_COLOR)
+        pen.setWidthF(1.3)
+        pen.setStyle(Qt.PenStyle.DashLine)
+        painter.save()
+        painter.setPen(pen)
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        painter.drawRect(rect)
+        painter.setPen(QPen(colors.HIGHLIGHT_COLOR))
+        painter.setBrush(QBrush(colors.FLOWGRAPH_BACKGROUND_COLOR))
+        for corner in (rect.topLeft(), rect.topRight(), rect.bottomLeft(), rect.bottomRight()):
+            painter.drawRect(QRectF(corner.x() - 2.5, corner.y() - 2.5, 5, 5))
+        painter.restore()
 
-                value_label = display_value
-                if self._is_item_visible(item) or self.core.is_dummy_block:
-                    if item.is_valid():
-                        painter.setPen(QPen(1))
-                    else:
-                        painter.setPen(Qt.GlobalColor.red)
-
-                    self.font.setBold(True)
-                    painter.setFont(self.font)
-                    painter.drawText(
-                        QRectF(7.5, 0 + y_offset, self.width, self.height),
-                        Qt.AlignmentFlag.AlignLeft,
-                        name + ": ",
-                    )
-                    fm = QFontMetrics(self.font)
-                    self.font.setBold(False)
-                    painter.setFont(self.font)
-                    painter.drawText(
-                        QRectF(
-                            7.5 + fm.horizontalAdvance(name + ": "),
-                            0 + y_offset,
-                            self.width,
-                            self.height,
-                        ),
-                        Qt.AlignmentFlag.AlignLeft,
-                        value_label,
-                    )
-                    y_offset += 20
+    def _paint_error_badge(self, painter):
+        r = 6.0
+        center = QPointF(self.width - 1, 1) if self.shape_kind is None else QPointF(self.width / 2, -1)
+        painter.save()
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(QBrush(colors.ERROR_FONT_COLOR))
+        painter.drawEllipse(center, r, r)
+        painter.setPen(QPen(QColor("#FFFFFF")))
+        font = QFont(self.font)
+        font.setPointSizeF(7)
+        painter.setFont(font)
+        painter.drawText(QRectF(center.x() - r, center.y() - r, 2 * r, 2 * r), Qt.AlignmentFlag.AlignCenter, "!")
+        painter.restore()
 
     def boundingRect(self):
-        return QRectF(
-            -2.5, -2.5, self.width + 5, self.height + 5
-        )
+        return self._bounds
 
     def set_states(self, states):
         for k, v in states.items():

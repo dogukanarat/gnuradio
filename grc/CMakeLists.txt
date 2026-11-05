@@ -189,7 +189,7 @@ GR_PYTHON_INSTALL(
 GR_PYTHON_INSTALL(
     DIRECTORY gui_qt
     DESTINATION "${GR_PYTHON_DIR}/gnuradio/grc"
-    FILES_MATCHING REGEX "\\.(py|yml|grc|mo|png|ui)$"
+    FILES_MATCHING REGEX "\\.(py|yml|grc|mo|png|ui|qss|svg)$"
 )
 
 GR_PYTHON_INSTALL(

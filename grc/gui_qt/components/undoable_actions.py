@@ -87,6 +87,56 @@ class MoveAction(QUndoCommand):
         self.scene.update()
 
 
+class AlignAction(QUndoCommand):
+    """Align the selected blocks to a common edge or centre line."""
+
+    EDGES = ("top", "middle", "bottom", "left", "center", "right")
+
+    def __init__(self, scene: FlowgraphScene, g_blocks, edge):
+        QUndoCommand.__init__(self)
+        log.debug(f"init AlignAction ({edge})")
+        self.setText(f"Align {edge}")
+        self.scene = scene
+        self.g_blocks = list(g_blocks)
+        self.old_pos = [(b.x(), b.y()) for b in self.g_blocks]
+        self.new_pos = [self._target(b, edge) for b in self.g_blocks]
+
+    def _target(self, block, edge):
+        blocks = self.g_blocks
+        x, y = block.x(), block.y()
+        if edge == "top":
+            y = min(b.y() for b in blocks)
+        elif edge == "bottom":
+            y = max(b.y() + b.height for b in blocks) - block.height
+        elif edge == "middle":
+            mid = sum(b.y() + b.height / 2 for b in blocks) / len(blocks)
+            y = mid - block.height / 2
+        elif edge == "left":
+            x = min(b.x() for b in blocks)
+        elif edge == "right":
+            x = max(b.x() + b.width for b in blocks) - block.width
+        elif edge == "center":
+            mid = sum(b.x() + b.width / 2 for b in blocks) / len(blocks)
+            x = mid - block.width / 2
+        return (x, y)
+
+    def has_effect(self):
+        return any(abs(o[0] - n[0]) > 0.5 or abs(o[1] - n[1]) > 0.5
+                   for o, n in zip(self.old_pos, self.new_pos))
+
+    def _apply(self, positions):
+        for g_block, (x, y) in zip(self.g_blocks, positions):
+            g_block.setPos(x, y)
+            g_block.core.states["coordinate"] = (g_block.x(), g_block.y())
+        self.scene.update()
+
+    def redo(self):
+        self._apply(self.new_pos)
+
+    def undo(self):
+        self._apply(self.old_pos)
+
+
 class EnableAction(ChangeStateAction):
     def __init__(self, scene: FlowgraphScene):
         ChangeStateAction.__init__(self, scene)

@@ -17,34 +17,93 @@ def get_color(rgb):
 
 
 #################################################################################
-# fg colors
+# Canvas palettes
+#
+# The canvas items read the module level names below at paint time, so
+# set_theme() can swap the whole palette by rebinding them.
 #################################################################################
-HIGHLIGHT_COLOR = get_color('#00FFFF')
-BORDER_COLOR = get_color('#616161')
-BORDER_COLOR_DISABLED = get_color('#888888')
-FONT_COLOR = get_color('#000000')
+_PALETTES = {
+    # Light engineering look: white canvas, slate outlines, blue accent.
+    "modern": {
+        "HIGHLIGHT_COLOR": "#1660C9",
+        "BORDER_COLOR": "#2A3441",
+        "BORDER_COLOR_DISABLED": "#A3ACB8",
+        "FONT_COLOR": "#1D2733",
+        "PARAM_NAME_COLOR": "#6B7686",
+        "PARAM_VALUE_COLOR": "#1D2733",
+        "ERROR_FONT_COLOR": "#C62828",
+        "COMMENT_COLOR": "#5B6676",
+        "COMMENT_COLOR_DISABLED": "#9AA3AF",
+        "BLOCK_DEPRECATED_BACKGROUND_COLOR": "#FFF4D6",
+        "BLOCK_DEPRECATED_BORDER_COLOR": "#D9822B",
+        "MISSING_BLOCK_BACKGROUND_COLOR": "#FFF1F1",
+        "MISSING_BLOCK_BORDER_COLOR": "#D32F2F",
+        "BLOCK_ENABLED_COLOR": "#FFFFFF",
+        "BLOCK_DISABLED_COLOR": "#EEF0F3",
+        "BLOCK_BYPASSED_COLOR": "#E4ECF7",
+        "BLOCK_SHADOW_COLOR": "#1C142030",
+        "CONNECTION_ENABLED_COLOR": "#2A3441",
+        "CONNECTION_DISABLED_COLOR": "#B9C1CC",
+        "CONNECTION_ERROR_COLOR": "#D32F2F",
+        "FLOWGRAPH_BACKGROUND_COLOR": "#FFFFFF",
+        "GRID_MINOR_COLOR": "#EBEFF4",
+        "GRID_MAJOR_COLOR": "#D9E0E8",
+        "VARIABLE_BACKGROUND_COLOR": "#F4F7FA",
+        "VARIABLE_BORDER_COLOR": "#9AA6B5",
+    },
+    # Dark counterpart of the modern look.
+    "dark": {
+        "HIGHLIGHT_COLOR": "#5AA2FF",
+        "BORDER_COLOR": "#8A96A8",
+        "BORDER_COLOR_DISABLED": "#4A5361",
+        "FONT_COLOR": "#E3E8EF",
+        "PARAM_NAME_COLOR": "#8F9AAB",
+        "PARAM_VALUE_COLOR": "#E3E8EF",
+        "ERROR_FONT_COLOR": "#FF6B6B",
+        "COMMENT_COLOR": "#A9B3C1",
+        "COMMENT_COLOR_DISABLED": "#6B7480",
+        "BLOCK_DEPRECATED_BACKGROUND_COLOR": "#3A3122",
+        "BLOCK_DEPRECATED_BORDER_COLOR": "#E59A3A",
+        "MISSING_BLOCK_BACKGROUND_COLOR": "#3A2326",
+        "MISSING_BLOCK_BORDER_COLOR": "#FF5C5C",
+        "BLOCK_ENABLED_COLOR": "#252B34",
+        "BLOCK_DISABLED_COLOR": "#1C2027",
+        "BLOCK_BYPASSED_COLOR": "#22303F",
+        "BLOCK_SHADOW_COLOR": "#55000000",
+        "CONNECTION_ENABLED_COLOR": "#9AA6B8",
+        "CONNECTION_DISABLED_COLOR": "#4A5361",
+        "CONNECTION_ERROR_COLOR": "#FF5C5C",
+        "FLOWGRAPH_BACKGROUND_COLOR": "#14181E",
+        "GRID_MINOR_COLOR": "#1A1F26",
+        "GRID_MAJOR_COLOR": "#222832",
+        "VARIABLE_BACKGROUND_COLOR": "#1E242C",
+        "VARIABLE_BORDER_COLOR": "#5C6676",
+    },
+}
+# The classic "light" theme uses the modern canvas as well.
+_PALETTES["light"] = _PALETTES["modern"]
 
-# Deprecated blocks
-# a light warm yellow
-BLOCK_DEPRECATED_BACKGROUND_COLOR = get_color('#FED86B')
-# orange
-BLOCK_DEPRECATED_BORDER_COLOR = get_color('#FF540B')
+CURRENT_THEME = "modern"
 
-# Missing blocks
-MISSING_BLOCK_BACKGROUND_COLOR = get_color('#FFF2F2')
-MISSING_BLOCK_BORDER_COLOR = get_color('#FF0000')
 
-# Block color constants
-BLOCK_ENABLED_COLOR = get_color('#F1ECFF')
-BLOCK_DISABLED_COLOR = get_color('#CCCCCC')
-BLOCK_BYPASSED_COLOR = get_color('#B0C4DE')
+def set_theme(theme):
+    """Rebind the module level canvas colors to the palette of `theme`."""
+    global CURRENT_THEME
+    palette = _PALETTES.get(theme, _PALETTES["modern"])
+    CURRENT_THEME = theme if theme in _PALETTES else "modern"
+    for name, value in palette.items():
+        globals()[name] = get_color(value)
 
-CONNECTION_ENABLED_COLOR = get_color('#616161')
-CONNECTION_DISABLED_COLOR = get_color('#BBBBBB')
-CONNECTION_ERROR_COLOR = get_color('#FF0000')
 
-DARK_FLOWGRAPH_BACKGROUND_COLOR = get_color('#19232D')
-LIGHT_FLOWGRAPH_BACKGROUND_COLOR = get_color('#FFFFFF')
+def is_dark():
+    return CURRENT_THEME == "dark"
+
+
+set_theme("modern")
+
+# Kept for backwards compatibility with code that picks the background itself
+DARK_FLOWGRAPH_BACKGROUND_COLOR = get_color(_PALETTES["dark"]["FLOWGRAPH_BACKGROUND_COLOR"])
+LIGHT_FLOWGRAPH_BACKGROUND_COLOR = get_color(_PALETTES["modern"]["FLOWGRAPH_BACKGROUND_COLOR"])
 
 
 #################################################################################

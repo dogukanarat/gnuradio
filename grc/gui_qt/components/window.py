@@ -29,7 +29,7 @@ from typing import Union
 
 from PyQt6.QtCore import QMetaObject, QPointF, QThreadPool, QUrl, Qt, pyqtSlot
 from PyQt6.QtGui import QDesktopServices, QIcon, QKeySequence, QAction, QPalette
-from PyQt6.QtWidgets import QApplication, QFileDialog, QMainWindow, QMenu, QMessageBox, QProgressBar, QStyle, QTabWidget, QToolBar, QUndoView
+from PyQt6.QtWidgets import QApplication, QFileDialog, QLabel, QMainWindow, QMenu, QMessageBox, QProgressBar, QStyle, QTabWidget, QToolBar, QUndoView
 
 # Custom modules
 from .flowgraph_view import FlowgraphView
@@ -51,6 +51,10 @@ from .undoable_actions import (
     AutoconnectAction,
 )
 from .preferences import PreferencesDialog
+from . import icons
+from .canvas import colors as canvas_colors
+from .ribbon import RibbonToolBar, build_ribbon
+from .undoable_actions import AlignAction
 from .oot_browser import OOTBrowser
 from .dialogs import ErrorsDialog
 from ...core.base import Element
@@ -133,6 +137,7 @@ class MainWindow(QMainWindow, base.Component):
         self.menus = {}
         self.toolbars = {}
         self.createActions(self.actions)
+        self.applyIcons(self.actions)
         self.createMenus(self.actions, self.menus)
         self.createToolbars(self.actions, self.toolbars)
         self.connectSlots()
@@ -159,12 +164,18 @@ class MainWindow(QMainWindow, base.Component):
         self.registerMenu(menus["help"])
 
         toolbars = self.toolbars
+        self.use_ribbon = self.app.qsettings.value("appearance/ribbon", True, type=bool)
+        if self.use_ribbon:
+            self.ribbon_toolbar = RibbonToolBar(build_ribbon(self.actions), self)
+            self.registerToolBar(self.ribbon_toolbar)
         self.registerToolBar(toolbars["file"])
         self.registerToolBar(toolbars["edit"])
         self.registerToolBar(toolbars["run"])
         self.registerToolBar(toolbars["misc"])
 
         self.tabWidget = QTabWidget()
+        self.tabWidget.setDocumentMode(True)
+        self.tabWidget.setMovable(True)
         self.tabWidget.setTabsClosable(True)
         self.tabWidget.tabCloseRequested.connect(
             lambda index: self.close_triggered(index)
@@ -196,6 +207,13 @@ class MainWindow(QMainWindow, base.Component):
             self.restoreState(self.app.qsettings.value("window/windowState"))
         except TypeError:
             log.warning("Could not restore window geometry and state.")
+        if self.use_ribbon:
+            # The ribbon replaces the classic toolbars; they stay available
+            # (hidden) in View > Toolbars.
+            for key in ("file", "edit", "run", "misc"):
+                toolbars[key].hide()
+            self.ribbon_toolbar.show()
+        self.updateStatusInfo()
 
         self.examples_found = False
         self.ExampleBrowser = ExampleBrowser()
@@ -632,6 +650,47 @@ class MainWindow(QMainWindow, base.Component):
         actions["save"].setEnabled(True)
         actions["errors"].setEnabled(False)
 
+    def applyIcons(self, actions):
+        """Use the built-in line icons so the toolbar looks the same on every desktop."""
+        if self.app.theme == "dark":
+            color, disabled = "#C9D1DC", "#5A6472"
+        else:
+            color, disabled = "#2B3646", "#A6AFBB"
+        for key, action in actions.items():
+            if icons.has(key):
+                action.setIcon(icons.icon(key, color, disabled))
+        actions["toggle_grid"].setCheckable(True)
+        actions["toggle_grid"].setChecked(self.app.qsettings.value("appearance/show_grid", True, type=bool))
+
+    def updateStatusInfo(self):
+        """Refresh the permanent status bar fields for the current flowgraph."""
+        if not hasattr(self, "status_counts"):
+            return
+        view = self.currentView
+        if view is None:
+            return
+        fg = self.currentFlowgraph
+        n_blocks = len([b for b in fg.blocks if b.key != "options"])
+        n_conns = len(fg.connections)
+        self.status_counts.setText(f"{n_blocks} blocks · {n_conns} connections")
+        try:
+            self.status_zoom.setText(f"{view.zoom_percent()} %")
+        except AttributeError:
+            self.status_zoom.setText("")
+        try:
+            language = fg.get_option("output_language")
+            options = fg.get_option("generate_options")
+            language = {"python": "Python", "cpp": "C++"}.get(language, str(language))
+            options = {"qt_gui": "QT GUI", "no_gui": "No GUI", "bokeh_gui": "Bokeh GUI",
+                       "hb": "Hier Block", "hb_qt_gui": "Hier Block (QT GUI)"}.get(options, str(options))
+            self.status_target.setText(f"{language} · {options}")
+        except Exception:
+            self.status_target.setText("")
+        valid = fg.is_valid()
+        self.status_state.setText("Ready" if valid else "Errors in flowgraph")
+        self.status_state.setStyleSheet(
+            "" if valid else f"color: {canvas_colors.ERROR_FONT_COLOR.name()}; font-weight: 600;")
+
     def updateDocTab(self):
         pass
         """
@@ -677,6 +736,9 @@ class MainWindow(QMainWindow, base.Component):
         self.actions["properties"].setEnabled(False)
         self.actions["toggle_source_bus"].setEnabled(False)
         self.actions["toggle_sink_bus"].setEnabled(False)
+        for key in ("vertical_align_top", "vertical_align_middle", "vertical_align_bottom",
+                    "horizontal_align_left", "horizontal_align_center", "horizontal_align_right"):
+            self.actions[key].setEnabled(False)
 
         if self.clipboard:
             self.actions["paste"].setEnabled(True)
@@ -720,6 +782,8 @@ class MainWindow(QMainWindow, base.Component):
                 if not block.core.can_bypass():
                     self.actions["bypass"].setEnabled(False)
                     break
+
+        self.updateStatusInfo()
 
     def createMenus(self, actions, menus):
         """Setup the main menubar for the application"""
@@ -908,6 +972,16 @@ class MainWindow(QMainWindow, base.Component):
     def createStatusBar(self):
         log.debug("Creating status bar")
         self.statusBar().showMessage(_("ready-message"))
+        # Permanent fields on the right: flowgraph state, size, target and zoom
+        self.status_state = QLabel()
+        self.status_counts = QLabel()
+        self.status_target = QLabel()
+        self.status_zoom = QLabel()
+        self.status_zoom.setMinimumWidth(52)
+        self.status_zoom.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        for label in (self.status_state, self.status_counts, self.status_target, self.status_zoom):
+            label.setObjectName("status_field")
+            self.statusBar().addPermanentWidget(label)
 
     def open(self):
         if self.currentFlowgraphScene.filename:
@@ -1335,14 +1409,55 @@ class MainWindow(QMainWindow, base.Component):
     def zoom_in_triggered(self):
         log.debug("zoom in")
         self.currentView.zoom(1.1)
+        self.updateStatusInfo()
 
     def zoom_out_triggered(self):
         log.debug("zoom out")
         self.currentView.zoom(1.0 / 1.1)
+        self.updateStatusInfo()
 
     def zoom_original_triggered(self):
         log.debug("zoom to original size")
         self.currentView.zoomOriginal()
+        self.updateStatusInfo()
+
+    def toggle_grid_toggled(self, checked):
+        log.debug(f"show grid: {checked}")
+        self.app.qsettings.setValue("appearance/show_grid", checked)
+        for index in range(self.tabWidget.count()):
+            view = self.tabWidget.widget(index)
+            if hasattr(view, "set_grid_visible"):
+                view.set_grid_visible(checked)
+
+    def _align_selected(self, edge):
+        scene = self.currentFlowgraphScene
+        blocks = scene.selected_blocks()
+        if len(blocks) < 2:
+            return
+        action = AlignAction(scene, blocks, edge)
+        if action.has_effect():
+            scene.set_saved(False)
+            self.tabWidget.tabBar().setTabTextColor(self.tabWidget.currentIndex(), Qt.GlobalColor.red)
+            scene.undoStack.push(action)
+        self.updateActions()
+
+    def vertical_align_top_triggered(self):
+        self._align_selected("top")
+
+    def vertical_align_middle_triggered(self):
+        self._align_selected("middle")
+
+    def vertical_align_bottom_triggered(self):
+        self._align_selected("bottom")
+
+    def horizontal_align_left_triggered(self):
+        self._align_selected("left")
+
+    def horizontal_align_center_triggered(self):
+        self._align_selected("center")
+
+    def horizontal_align_right_triggered(self):
+        self._align_selected("right")
 
     def find_triggered(self):
         log.debug("find block")
